@@ -62,7 +62,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link to="/" className="flex items-center gap-2 text-2xl font-bold tracking-tight text-[var(--primary)]">
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt={settings.siteName} className="h-10 w-auto object-contain" />
+              <img src={settings.logoUrl} alt={settings.siteName} className="h-12 w-auto object-contain" />
             ) : (
               settings.siteName
             )}
@@ -117,7 +117,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div>
             <div className="mb-4">
               {settings.logoUrl ? (
-                 <img src={settings.logoUrl} alt={settings.siteName} className="h-8 w-auto brightness-0 invert opacity-80" />
+                 <img src={settings.logoUrl} alt={settings.siteName} className="h-10 w-auto object-contain" />
               ) : (
                 <h3 className="text-white text-xl font-bold">{settings.siteName}</h3>
               )}
@@ -169,8 +169,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
              )}
           </div>
         </div>
-        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm flex items-center justify-center">
+        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm flex flex-col items-center justify-center gap-2">
           <span>&copy; {new Date().getFullYear()} {settings.siteName}. All rights reserved.</span>
+          <Link to="/secure-admin-entry" className="opacity-20 hover:opacity-100 transition-opacity text-xs">Admin</Link>
         </div>
       </footer>
     </div>

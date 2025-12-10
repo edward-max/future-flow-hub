@@ -1,3 +1,4 @@
+
 import { BlogPost, Category, SiteSettings, Subscriber } from './types';
 
 export const ADMIN_CREDENTIALS = {
@@ -10,6 +11,7 @@ export const INITIAL_SETTINGS: SiteSettings = {
   tagline: "Your Daily Dose of Tech, Innovation & Future Insights",
   description: "Exploring the frontiers of technology, finance, and human progress.",
   logoUrl: "https://cdn.aistudio.google.com/9/8/a/side/502e6d62-10a4-4903-b09b-640b080b0642/4134442f.png",
+  faviconUrl: "",
   primaryColor: "#3b82f6", // Default Blue
   fontFamily: "Inter",
   layoutMode: "wide",

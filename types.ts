@@ -1,3 +1,4 @@
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -28,6 +29,7 @@ export interface SiteSettings {
   tagline: string;
   description: string;
   logoUrl?: string;
+  faviconUrl?: string;
   primaryColor: string; // Hex code
   fontFamily: 'Inter' | 'Merriweather' | 'Space Grotesk';
   layoutMode: 'wide' | 'boxed';

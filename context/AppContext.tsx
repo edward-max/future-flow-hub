@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BlogPost, Category, SiteSettings, Comment, Subscriber } from '../types';
 import { INITIAL_POSTS, INITIAL_CATEGORIES, INITIAL_SETTINGS, INITIAL_SUBSCRIBERS, ADMIN_CREDENTIALS } from '../constants';
@@ -40,6 +41,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       document.documentElement.classList.remove('dark');
     }
   }, [settings.themeMode]);
+
+  // Apply Favicon Side Effect
+  useEffect(() => {
+    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    if (settings.faviconUrl) {
+      link.href = settings.faviconUrl;
+    }
+  }, [settings.faviconUrl]);
 
   useEffect(() => {
     saveToStorage('ffh_posts', posts);
