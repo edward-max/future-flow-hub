@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Future Flow Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Merriweather', 'serif'],
+              mono: ['Space Grotesk', 'monospace'],
+            },
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Merriweather:wght@300;400;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #1f2937;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+      .rich-text-editor h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; }
+      .rich-text-editor h2 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; }
+      .rich-text-editor p { margin-bottom: 1em; line-height: 1.6; }
+      .rich-text-editor ul { list-style-type: disc; margin-left: 1.5em; margin-bottom: 1em; }
+      .rich-text-editor ol { list-style-type: decimal; margin-left: 1.5em; margin-bottom: 1em; }
+      .rich-text-editor blockquote { border-left: 4px solid #ddd; padding-left: 1em; color: #666; font-style: italic; }
+      .dark .rich-text-editor blockquote { border-left-color: #4b5563; color: #9ca3af; }
+      .rich-text-editor a { color: blue; text-decoration: underline; }
+      .dark .rich-text-editor a { color: #60a5fa; }
+      /* Dark mode specific overrides for raw HTML content */
+      .dark .rich-text-editor { color: #d1d5db; }
+      .dark .rich-text-editor h1, .dark .rich-text-editor h2, .dark .rich-text-editor h3 { color: #f9fafb; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.10.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
