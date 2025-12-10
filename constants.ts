@@ -1,5 +1,10 @@
 import { BlogPost, Category, SiteSettings, Subscriber } from './types';
 
+export const ADMIN_CREDENTIALS = {
+  username: "admin",
+  password: "FutureFlow2024!"
+};
+
 export const INITIAL_SETTINGS: SiteSettings = {
   siteName: "Future Flow Hub",
   tagline: "Your Daily Dose of Tech, Innovation & Future Insights",

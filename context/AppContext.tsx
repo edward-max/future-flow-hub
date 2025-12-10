@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BlogPost, Category, SiteSettings, Comment, Subscriber } from '../types';
-import { INITIAL_POSTS, INITIAL_CATEGORIES, INITIAL_SETTINGS, INITIAL_SUBSCRIBERS } from '../constants';
+import { INITIAL_POSTS, INITIAL_CATEGORIES, INITIAL_SETTINGS, INITIAL_SUBSCRIBERS, ADMIN_CREDENTIALS } from '../constants';
 import { getFromStorage, saveToStorage } from '../services/storage';
 
 interface AppContextType {
@@ -9,7 +9,8 @@ interface AppContextType {
   settings: SiteSettings;
   subscribers: Subscriber[];
   isAdminMode: boolean;
-  toggleAdminMode: () => void;
+  login: (u: string, p: string) => boolean;
+  logout: () => void;
   addPost: (post: BlogPost) => void;
   updatePost: (post: BlogPost) => void;
   deletePost: (id: string) => void;
@@ -27,6 +28,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [categories, setCategories] = useState<Category[]>(() => getFromStorage('ffh_categories', INITIAL_CATEGORIES));
   const [settings, setSettings] = useState<SiteSettings>(() => getFromStorage('ffh_settings', INITIAL_SETTINGS));
   const [subscribers, setSubscribers] = useState<Subscriber[]>(() => getFromStorage('ffh_subscribers', INITIAL_SUBSCRIBERS));
+  
+  // Use session storage for auth state so it persists on refresh but clears on browser close
   const [isAdminMode, setIsAdminMode] = useState(false);
 
   // Apply Theme Side Effect
@@ -54,7 +57,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveToStorage('ffh_subscribers', subscribers);
   }, [subscribers]);
 
-  const toggleAdminMode = () => setIsAdminMode(prev => !prev);
+  const login = (u: string, p: string) => {
+    if (u === ADMIN_CREDENTIALS.username && p === ADMIN_CREDENTIALS.password) {
+      setIsAdminMode(true);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setIsAdminMode(false);
+  };
 
   const addPost = (post: BlogPost) => {
     setPosts(prev => [post, ...prev]);
@@ -111,7 +124,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       settings,
       subscribers,
       isAdminMode,
-      toggleAdminMode,
+      login,
+      logout,
       addPost,
       updatePost,
       deletePost,

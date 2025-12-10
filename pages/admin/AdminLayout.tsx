@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { LayoutDashboard, FileText, Settings, LogOut, Grid, Mail } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
-  const { isAdminMode, toggleAdminMode } = useApp();
+  const { isAdminMode, logout } = useApp();
 
   if (!isAdminMode) {
     return <Navigate to="/" />;
@@ -38,7 +38,7 @@ export const AdminLayout: React.FC = () => {
            </NavLink>
         </nav>
         <div className="p-4 border-t border-gray-200">
-           <button onClick={toggleAdminMode} className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+           <button onClick={logout} className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-lg transition-colors">
              <LogOut size={20} /> Log Out
            </button>
         </div>

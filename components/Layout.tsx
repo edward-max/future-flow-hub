@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { Menu, X, Facebook, Lock, Moon, Sun, CheckCircle, Instagram } from 'lucide-react';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { settings, updateSettings, isAdminMode, toggleAdminMode, addSubscriber } = useApp();
+  const { settings, updateSettings, isAdminMode, logout, addSubscriber } = useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const navigate = useNavigate();
 
@@ -16,12 +16,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const customStyle = {
     '--primary': settings.primaryColor,
     fontFamily: settings.fontFamily === 'Inter' ? "'Inter', sans-serif" :
-                settings.fontFamily === 'Merriweather' ? "'Merriweather', serif" :
+                settings.fontFamily === 'Merriweather', 'serif' :
                 "'Space Grotesk', sans-serif",
   } as React.CSSProperties;
 
-  const handleAdminToggle = () => {
-    toggleAdminMode();
+  const handleLogout = () => {
+    logout();
     navigate('/');
   };
 
@@ -50,7 +50,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <p>{settings.tagline}</p>
         <div className="flex gap-4 items-center">
           {isAdminMode && (
-            <button onClick={handleAdminToggle} className="flex items-center gap-1 hover:text-red-400 transition-colors">
+            <button onClick={handleLogout} className="flex items-center gap-1 hover:text-red-400 transition-colors">
               <Lock size={12} /> Exit Admin Mode
             </button>
           )}
@@ -169,8 +169,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
              )}
           </div>
         </div>
-        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm">
-          &copy; {new Date().getFullYear()} {settings.siteName}. All rights reserved.
+        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm flex items-center justify-center">
+          <span>&copy; {new Date().getFullYear()} {settings.siteName}. All rights reserved.</span>
         </div>
       </footer>
     </div>
