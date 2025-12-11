@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from '../../components/RichTextEditor';
-import { Trash2, Edit, Plus, X, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Edit, Plus, X, Image as ImageIcon, Upload } from 'lucide-react';
 
 export const PostManager: React.FC = () => {
   const { posts, categories, addPost, updatePost, deletePost } = useApp();
@@ -48,6 +48,17 @@ export const PostManager: React.FC = () => {
   const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       deletePost(id);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCurrentPost({ ...currentPost, imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -119,16 +130,50 @@ export const PostManager: React.FC = () => {
 
           <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Featured Image URL</label>
-              <div className="flex gap-2 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image</label>
+              
+              {/* URL Input */}
+              <input
+                type="text"
+                placeholder="Paste image URL..."
+                className="w-full border rounded px-3 py-2 text-sm mb-3 focus:ring-2 focus:ring-[var(--primary)] outline-none bg-white"
+                value={currentPost.imageUrl || ''}
+                onChange={e => setCurrentPost({...currentPost, imageUrl: e.target.value})}
+              />
+
+              {/* File Upload */}
+              <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors mb-4 text-center">
                  <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={currentPost.imageUrl || ''}
-                  onChange={e => setCurrentPost({...currentPost, imageUrl: e.target.value})}
+                    type="file"
+                    id="post-image-upload"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
                  />
+                 <label htmlFor="post-image-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                    <div className="p-2 bg-blue-50 text-blue-500 rounded-full">
+                      <Upload size={20} />
+                    </div>
+                    <span className="text-sm text-gray-600 font-medium">Click to upload image</span>
+                    <span className="text-xs text-gray-400">SVG, PNG, JPG or GIF</span>
+                 </label>
               </div>
-              {currentPost.imageUrl && <img src={currentPost.imageUrl} alt="Preview" className="w-full h-32 object-cover rounded" />}
+
+              {/* Preview */}
+              {currentPost.imageUrl && (
+                <div className="relative rounded-lg overflow-hidden border border-gray-200 group">
+                  <img src={currentPost.imageUrl} alt="Preview" className="w-full h-48 object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button 
+                      type="button"
+                      onClick={() => setCurrentPost({...currentPost, imageUrl: ''})}
+                      className="bg-white text-red-600 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 hover:bg-red-50 shadow-lg"
+                    >
+                      <Trash2 size={14} /> Remove
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
