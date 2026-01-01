@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Clock, Eye, CheckCircle } from 'lucide-react';
@@ -9,6 +9,13 @@ export const Home: React.FC = () => {
   const featuredPost = posts.find(p => p.featured) || posts[0];
   const recentPosts = posts.filter(p => p.id !== featuredPost?.id).slice(0, 3);
   const trendingPosts = [...posts].sort((a, b) => b.views - a.views).slice(0, 4);
+
+  // SEO
+  useEffect(() => {
+    document.title = `${settings.siteName} | ${settings.tagline}`;
+    const metaDesc = document.getElementById('meta-description');
+    if (metaDesc) metaDesc.setAttribute('content', settings.description);
+  }, [settings]);
 
   // Newsletter State
   const [email, setEmail] = useState('');
@@ -107,7 +114,7 @@ export const Home: React.FC = () => {
                    <h3 className="text-xl font-bold mb-2 group-hover:text-[var(--primary)] dark:text-white transition-colors">
                      <Link to={`/post/${post.slug}`}>{post.title}</Link>
                    </h3>
-                   <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2 flex-grow">{post.excerpt}</p>
+                   <h2 className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2 flex-grow">{post.excerpt}</h2>
                    <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
                      <div className="flex items-center gap-1"><Clock size={14} /> {post.date}</div>
                      <div className="flex items-center gap-1"><Eye size={14} /> {post.views}</div>

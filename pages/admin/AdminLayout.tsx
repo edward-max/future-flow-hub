@@ -11,7 +11,7 @@ export const AdminLayout: React.FC = () => {
   }
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-[var(--primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`;
+    `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-900 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`;
 
   return (
     <div className="flex h-screen bg-gray-100 font-sans">

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 
@@ -38,12 +37,12 @@ export const Settings: React.FC = () => {
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Branding */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b">Branding & Identity</h2>
+          <h2 className="text-lg font-bold mb-4 pb-2 border-b text-blue-900">Branding & Identity</h2>
           <div className="space-y-4">
              <div>
                <label className="block text-sm font-medium mb-1">Site Name</label>
                <input
-                 className="w-full border rounded px-3 py-2"
+                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-900 outline-none"
                  value={settings.siteName}
                  onChange={(e) => handleChange('siteName', e.target.value)}
                />
@@ -53,7 +52,7 @@ export const Settings: React.FC = () => {
                <label className="block text-sm font-medium mb-1">Logo Image</label>
                <div className="space-y-3">
                  <input
-                   className="w-full border rounded px-3 py-2 text-sm"
+                   className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-900 outline-none"
                    placeholder="https://example.com/logo.png"
                    value={settings.logoUrl || ''}
                    onChange={(e) => handleChange('logoUrl', e.target.value)}
@@ -64,7 +63,7 @@ export const Settings: React.FC = () => {
                         type="file"
                         accept="image/*"
                         onChange={handleLogoUpload}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)] file:text-white hover:file:opacity-90 cursor-pointer"
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-900 file:text-white hover:file:bg-blue-800 cursor-pointer"
                     />
                  </div>
                </div>
@@ -81,14 +80,13 @@ export const Settings: React.FC = () => {
                    </button>
                  </div>
                )}
-               <p className="text-xs text-gray-400 mt-1">Supported formats: PNG, JPG, GIF, SVG.</p>
              </div>
 
              <div className="border-t border-gray-100 pt-4 mt-4">
                <label className="block text-sm font-medium mb-1">Favicon (Browser Tab Icon)</label>
                <div className="space-y-3">
                  <input
-                   className="w-full border rounded px-3 py-2 text-sm"
+                   className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-900 outline-none"
                    placeholder="https://example.com/favicon.ico"
                    value={settings.faviconUrl || ''}
                    onChange={(e) => handleChange('faviconUrl', e.target.value)}
@@ -99,7 +97,7 @@ export const Settings: React.FC = () => {
                         type="file"
                         accept="image/*"
                         onChange={handleFaviconUpload}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-700 file:text-white hover:file:opacity-90 cursor-pointer"
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-900 file:text-white hover:file:bg-blue-800 cursor-pointer"
                     />
                  </div>
                </div>
@@ -116,13 +114,12 @@ export const Settings: React.FC = () => {
                    </button>
                  </div>
                )}
-               <p className="text-xs text-gray-400 mt-1">Recommended size: 32x32px or 64x64px. PNG or ICO.</p>
              </div>
 
              <div className="border-t border-gray-100 pt-4">
                <label className="block text-sm font-medium mb-1">Tagline</label>
                <input
-                 className="w-full border rounded px-3 py-2"
+                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-900 outline-none"
                  value={settings.tagline}
                  onChange={(e) => handleChange('tagline', e.target.value)}
                />
@@ -130,7 +127,7 @@ export const Settings: React.FC = () => {
              <div>
                <label className="block text-sm font-medium mb-1">Description (Footer/SEO)</label>
                <textarea
-                 className="w-full border rounded px-3 py-2 h-20"
+                 className="w-full border rounded px-3 py-2 h-20 focus:ring-2 focus:ring-blue-900 outline-none"
                  value={settings.description}
                  onChange={(e) => handleChange('description', e.target.value)}
                />
@@ -140,7 +137,7 @@ export const Settings: React.FC = () => {
 
         {/* Theme */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b">Visual Theme</h2>
+          <h2 className="text-lg font-bold mb-4 pb-2 border-b text-blue-900">Visual Theme</h2>
           <div className="space-y-6">
              <div>
                <label className="block text-sm font-medium mb-2">Primary Color</label>
@@ -152,7 +149,7 @@ export const Settings: React.FC = () => {
                    className="h-10 w-20 rounded cursor-pointer border border-gray-200"
                  />
                  <div className="flex-1 text-xs text-gray-500 flex items-center">
-                   Pick a brand color. This will affect buttons, links, and highlights.
+                   Pick a brand color for the public frontend elements.
                  </div>
                </div>
              </div>
@@ -164,7 +161,7 @@ export const Settings: React.FC = () => {
                    <button
                      key={font}
                      onClick={() => handleChange('fontFamily', font)}
-                     className={`border rounded px-3 py-2 text-sm ${settings.fontFamily === font ? 'border-[var(--primary)] bg-[var(--primary)]/10 font-bold' : 'hover:bg-gray-50'}`}
+                     className={`border rounded px-3 py-2 text-sm transition-all ${settings.fontFamily === font ? 'border-blue-900 bg-blue-50 text-blue-900 font-bold' : 'hover:bg-gray-50'}`}
                      style={{ fontFamily: font }}
                    >
                      {font}
@@ -182,7 +179,7 @@ export const Settings: React.FC = () => {
                       name="layout"
                       checked={settings.layoutMode === 'wide'}
                       onChange={() => handleChange('layoutMode', 'wide')}
-                      className="text-[var(--primary)] focus:ring-[var(--primary)]"
+                      className="text-blue-900 focus:ring-blue-900"
                     />
                     <span className="text-sm">Full Width</span>
                   </label>
@@ -192,35 +189,12 @@ export const Settings: React.FC = () => {
                       name="layout"
                       checked={settings.layoutMode === 'boxed'}
                       onChange={() => handleChange('layoutMode', 'boxed')}
-                      className="text-[var(--primary)] focus:ring-[var(--primary)]"
+                      className="text-blue-900 focus:ring-blue-900"
                     />
                     <span className="text-sm">Boxed</span>
                   </label>
                </div>
              </div>
-          </div>
-        </div>
-
-        {/* Social Links */}
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b">Social Connections</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-               <label className="block text-sm font-medium mb-1">Facebook URL</label>
-               <input
-                 className="w-full border rounded px-3 py-2"
-                 value={settings.socialLinks.facebook || ''}
-                 onChange={(e) => updateSettings({...settings, socialLinks: {...settings.socialLinks, facebook: e.target.value}})}
-               />
-            </div>
-             <div>
-               <label className="block text-sm font-medium mb-1">Instagram URL</label>
-               <input
-                 className="w-full border rounded px-3 py-2"
-                 value={settings.socialLinks.instagram || ''}
-                 onChange={(e) => updateSettings({...settings, socialLinks: {...settings.socialLinks, instagram: e.target.value}})}
-               />
-            </div>
           </div>
         </div>
       </div>

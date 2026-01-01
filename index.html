@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Future Flow Hub</title>
+    <meta name="description" id="meta-description" content="Exploring the frontiers of technology, finance, and human progress.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -53,6 +54,14 @@
       /* Dark mode specific overrides for raw HTML content */
       .dark .rich-text-editor { color: #d1d5db; }
       .dark .rich-text-editor h1, .dark .rich-text-editor h2, .dark .rich-text-editor h3 { color: #f9fafb; }
+      
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.4s ease-out forwards;
+      }
     </style>
   <script type="importmap">
 {

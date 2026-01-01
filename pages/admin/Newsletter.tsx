@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Trash2, Mail } from 'lucide-react';
+import { Trash2, Mail, Download } from 'lucide-react';
 
 export const Newsletter: React.FC = () => {
   const { subscribers, removeSubscriber } = useApp();
@@ -14,13 +14,15 @@ export const Newsletter: React.FC = () => {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-8 flex items-center gap-2">
-        <Mail className="text-[var(--primary)]" /> Newsletter Subscribers
+        <Mail className="text-blue-900" /> Newsletter Subscribers
       </h1>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <h2 className="font-bold text-lg">Total Subscribers: {subscribers.length}</h2>
-          <button className="text-sm text-[var(--primary)] font-medium hover:underline">Export CSV</button>
+          <button className="flex items-center gap-2 bg-blue-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-800 transition-all shadow-sm active:scale-95">
+            <Download size={16} /> Export CSV
+          </button>
         </div>
         
         {subscribers.length > 0 ? (

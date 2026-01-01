@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from '../../components/RichTextEditor';
-import { Trash2, Edit, Plus, X, Image as ImageIcon, Upload } from 'lucide-react';
+import { Trash2, Edit, Plus, X, Image as ImageIcon, Upload, CheckCircle, ExternalLink, ArrowLeft } from 'lucide-react';
 
 export const PostManager: React.FC = () => {
   const { posts, categories, addPost, updatePost, deletePost } = useApp();
   const [isEditing, setIsEditing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [lastSavedSlug, setLastSavedSlug] = useState('');
   const [currentPost, setCurrentPost] = useState<Partial<BlogPost>>({});
 
   const handleEdit = (post: BlogPost) => {
     setCurrentPost(post);
     setIsEditing(true);
+    setShowSuccess(false);
   };
 
   const handleCreate = () => {
@@ -27,6 +30,7 @@ export const PostManager: React.FC = () => {
       imageUrl: 'https://picsum.photos/800/400'
     });
     setIsEditing(true);
+    setShowSuccess(false);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -42,6 +46,9 @@ export const PostManager: React.FC = () => {
     } else {
       addPost(finalPost);
     }
+    
+    setLastSavedSlug(slug);
+    setShowSuccess(true);
     setIsEditing(false);
   };
 
@@ -70,6 +77,41 @@ export const PostManager: React.FC = () => {
     if (currentPost.slug) score += 20;
     return score;
   };
+
+  if (showSuccess) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
+        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+          <CheckCircle size={48} />
+        </div>
+        <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Post Published!</h2>
+        <p className="text-gray-500 mb-10 text-center max-w-md">Your story "{currentPost.title}" is now live and ready for the world to see.</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg px-6">
+          <a 
+            href={`/post/${lastSavedSlug}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-blue-900 text-white font-bold py-4 rounded-xl hover:bg-blue-800 shadow-lg shadow-blue-900/20 transition-all"
+          >
+            <ExternalLink size={20} /> View Live Post
+          </a>
+          <button 
+            onClick={handleCreate}
+            className="flex items-center justify-center gap-2 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-all"
+          >
+            <Plus size={20} /> Create New Post
+          </button>
+          <button 
+            onClick={() => setShowSuccess(false)}
+            className="md:col-span-2 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-50 transition-all"
+          >
+            <ArrowLeft size={20} /> Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isEditing) {
     return (
@@ -218,8 +260,8 @@ export const PostManager: React.FC = () => {
                <label htmlFor="featured" className="text-sm font-medium">Mark as Featured</label>
             </div>
 
-            <button type="submit" className="w-full bg-[var(--primary)] text-white font-bold py-3 rounded-lg hover:opacity-90">
-              Save Post
+            <button type="submit" className="w-full bg-blue-900 text-white font-bold py-4 rounded-lg hover:bg-blue-800 shadow-lg shadow-blue-900/20 transition-all transform active:scale-[0.98]">
+              Publish Post
             </button>
           </div>
         </form>
@@ -231,7 +273,7 @@ export const PostManager: React.FC = () => {
     <div>
        <div className="flex justify-between items-center mb-8">
          <h1 className="text-2xl font-bold">Manage Posts</h1>
-         <button onClick={handleCreate} className="bg-[var(--primary)] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:opacity-90">
+         <button onClick={handleCreate} className="bg-blue-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-800 transition-all shadow-md active:scale-95">
            <Plus size={18} /> New Post
          </button>
        </div>
@@ -250,13 +292,33 @@ export const PostManager: React.FC = () => {
            <tbody>
              {posts.map(post => (
                <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50">
-                 <td className="p-4 font-medium">{post.title} {post.featured && <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded">Featured</span>}</td>
+                 <td className="p-4 font-medium">
+                   <div className="flex items-center gap-2">
+                     {post.title} 
+                     {post.featured && <span className="bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Featured</span>}
+                   </div>
+                 </td>
                  <td className="p-4 text-sm text-gray-600">{post.category}</td>
                  <td className="p-4 text-sm text-gray-600">{post.date}</td>
                  <td className="p-4 text-sm text-gray-600">{post.views}</td>
                  <td className="p-4 text-right">
-                   <button onClick={() => handleEdit(post)} className="text-blue-500 hover:text-blue-700 mr-3"><Edit size={18} /></button>
-                   <button onClick={() => handleDelete(post.id)} className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>
+                   <div className="flex justify-end gap-2">
+                     <a 
+                       href={`/post/${post.slug}`} 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       className="p-2 text-gray-400 hover:text-[var(--primary)] transition-colors"
+                       title="View Live"
+                     >
+                       <ExternalLink size={18} />
+                     </a>
+                     <button onClick={() => handleEdit(post)} className="p-2 text-blue-500 hover:text-blue-700 transition-colors" title="Edit">
+                       <Edit size={18} />
+                     </button>
+                     <button onClick={() => handleDelete(post.id)} className="p-2 text-red-500 hover:text-red-700 transition-colors" title="Delete">
+                       <Trash2 size={18} />
+                     </button>
+                   </div>
                  </td>
                </tr>
              ))}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Calendar, User, Tag, Share2, MessageSquare, Send } from 'lucide-react';
@@ -6,8 +6,24 @@ import { Comment } from '../../types';
 
 export const PostDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { posts, addComment } = useApp();
+  const { posts, settings, addComment } = useApp();
   const post = posts.find(p => p.slug === slug);
+
+  // Dynamic SEO
+  useEffect(() => {
+    if (post) {
+      document.title = `${post.metaTitle || post.title} | ${settings.siteName}`;
+      const metaDesc = document.getElementById('meta-description');
+      if (metaDesc) metaDesc.setAttribute('content', post.metaDescription || post.excerpt);
+    }
+    
+    // Cleanup to revert to default on unmount
+    return () => {
+      document.title = `${settings.siteName} | ${settings.tagline}`;
+      const metaDesc = document.getElementById('meta-description');
+      if (metaDesc) metaDesc.setAttribute('content', settings.description);
+    };
+  }, [post, settings]);
 
   // Comment State
   const [commentName, setCommentName] = useState('');
@@ -35,14 +51,14 @@ export const PostDetail: React.FC = () => {
   };
 
   return (
-    <article className="pb-16">
+    <article className="pb-16 animate-fade-in">
       {/* Header */}
       <div className="bg-gray-50 dark:bg-gray-800 py-16 transition-colors duration-300">
         <div className="container mx-auto px-4 max-w-4xl text-center">
           <span className="text-[var(--primary)] font-bold tracking-widest uppercase text-sm mb-4 block">{post.category}</span>
           <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-6 leading-tight">{post.title}</h1>
           <div className="flex items-center justify-center gap-6 text-gray-500 dark:text-gray-400 text-sm">
-            <span className="flex items-center gap-2"><User size={16} /> {post.author}</span>
+            <span className="flex items-center gap-2 font-medium"><div className="w-8 h-8 bg-[var(--primary)]/10 text-[var(--primary)] rounded-full flex items-center justify-center text-xs">{post.author.charAt(0)}</div> {post.author}</span>
             <span className="flex items-center gap-2"><Calendar size={16} /> {post.date}</span>
           </div>
         </div>
@@ -50,7 +66,7 @@ export const PostDetail: React.FC = () => {
 
       {/* Image */}
       <div className="container mx-auto px-4 max-w-5xl -mt-8 mb-12">
-        <img src={post.imageUrl} alt={post.title} className="w-full h-auto rounded-xl shadow-lg" />
+        <img src={post.imageUrl} alt={post.title} className="w-full h-auto rounded-xl shadow-lg border border-white dark:border-gray-700" />
       </div>
 
       {/* Content */}
@@ -62,16 +78,16 @@ export const PostDetail: React.FC = () => {
 
         {/* Tags & Share */}
         <div className="border-t border-b border-gray-100 dark:border-gray-800 py-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {post.tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full">
+              <span key={tag} className="flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full border border-transparent hover:border-[var(--primary)] cursor-default transition-colors">
                 <Tag size={12} /> {tag}
               </span>
             ))}
           </div>
           <div className="flex gap-2">
-             <span className="text-gray-500 text-sm font-medium mr-2 self-center dark:text-gray-400">Share:</span>
-             <button className="p-2 bg-blue-600 text-white rounded-full hover:opacity-90"><Share2 size={16}/></button>
+             <span className="text-gray-500 text-sm font-medium mr-2 self-center dark:text-gray-400">Share Story:</span>
+             <button className="p-2 bg-blue-600 text-white rounded-full hover:opacity-90 shadow-md transition-all active:scale-95"><Share2 size={16}/></button>
           </div>
         </div>
 
@@ -85,16 +101,21 @@ export const PostDetail: React.FC = () => {
            <div className="space-y-6 mb-12">
              {post.comments && post.comments.length > 0 ? (
                post.comments.map(comment => (
-                 <div key={comment.id} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700">
+                 <div key={comment.id} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm transition-transform hover:translate-x-1">
                     <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-bold dark:text-gray-200">{comment.user}</h4>
+                      <h4 className="font-bold dark:text-gray-200 flex items-center gap-2">
+                        <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-[10px]">{comment.user.charAt(0)}</div>
+                        {comment.user}
+                      </h4>
                       <span className="text-xs text-gray-400">{comment.date}</span>
                     </div>
-                    <p className="text-gray-700 dark:text-gray-300">{comment.text}</p>
+                    <p className="text-gray-700 dark:text-gray-300 ml-8">{comment.text}</p>
                  </div>
                ))
              ) : (
-               <p className="text-gray-500 italic">No comments yet. Be the first to share your thoughts!</p>
+               <div className="text-center py-10 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                 <p className="text-gray-500 italic">No comments yet. Be the first to share your thoughts!</p>
+               </div>
              )}
            </div>
 
@@ -109,7 +130,7 @@ export const PostDetail: React.FC = () => {
                      type="text"
                      value={commentName}
                      onChange={(e) => setCommentName(e.target.value)}
-                     className="w-full border dark:border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[var(--primary)] outline-none dark:bg-gray-700 dark:text-white"
+                     className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[var(--primary)] outline-none dark:bg-gray-700 dark:text-white transition-all"
                      placeholder="John Doe"
                    />
                  </div>
@@ -119,11 +140,11 @@ export const PostDetail: React.FC = () => {
                      required
                      value={commentText}
                      onChange={(e) => setCommentText(e.target.value)}
-                     className="w-full border dark:border-gray-600 rounded-lg px-4 py-3 h-32 focus:ring-2 focus:ring-[var(--primary)] outline-none resize-none dark:bg-gray-700 dark:text-white"
+                     className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 h-32 focus:ring-2 focus:ring-[var(--primary)] outline-none resize-none dark:bg-gray-700 dark:text-white transition-all"
                      placeholder="Share your thoughts..."
                    />
                  </div>
-                 <button type="submit" className="bg-[var(--primary)] text-white px-6 py-3 rounded-lg font-bold hover:opacity-90 flex items-center gap-2">
+                 <button type="submit" className="bg-[var(--primary)] text-white px-6 py-3 rounded-lg font-bold hover:opacity-90 flex items-center gap-2 shadow-lg shadow-[var(--primary)]/20 transition-all active:scale-95">
                     <Send size={18} /> Post Comment
                  </button>
               </form>
