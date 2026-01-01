@@ -70,7 +70,8 @@ export const BlogList: React.FC = () => {
       {filteredPosts.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPosts.map(post => (
-            <Link key={post.id} to={`/post/${post.slug}`} className="group block h-full">
+            /* Updated link with category */
+            <Link key={post.id} to={`/post/${post.category.toLowerCase()}/${post.slug}`} className="group block h-full">
               <article className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden h-full flex flex-col hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                 <div className="h-56 overflow-hidden relative">
                   <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />

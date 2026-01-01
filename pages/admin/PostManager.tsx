@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from '../../components/RichTextEditor';
-import { Trash2, Edit, Plus, X, Image as ImageIcon, Upload, CheckCircle, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Trash2, Edit, Plus, X, Upload, CheckCircle, ExternalLink, ArrowLeft } from 'lucide-react';
 
 export const PostManager: React.FC = () => {
   const { posts, categories, addPost, updatePost, deletePost } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastSavedSlug, setLastSavedSlug] = useState('');
+  const [lastSavedCategory, setLastSavedCategory] = useState('');
   const [currentPost, setCurrentPost] = useState<Partial<BlogPost>>({});
 
   const handleEdit = (post: BlogPost) => {
@@ -35,7 +36,7 @@ export const PostManager: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPost.title || !currentPost.content) return;
+    if (!currentPost.title || !currentPost.content || !currentPost.category) return;
 
     // Simple slug generator
     const slug = currentPost.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
@@ -48,6 +49,7 @@ export const PostManager: React.FC = () => {
     }
     
     setLastSavedSlug(slug);
+    setLastSavedCategory(currentPost.category.toLowerCase());
     setShowSuccess(true);
     setIsEditing(false);
   };
@@ -69,7 +71,6 @@ export const PostManager: React.FC = () => {
     }
   };
 
-  // Calculate SEO Score
   const getSeoScore = () => {
     let score = 0;
     if (currentPost.metaTitle && currentPost.metaTitle.length > 30) score += 40;
@@ -88,8 +89,9 @@ export const PostManager: React.FC = () => {
         <p className="text-gray-500 mb-10 text-center max-w-md">Your story "{currentPost.title}" is now live and ready for the world to see.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg px-6">
+          {/* Updated link with category */}
           <a 
-            href={`/post/${lastSavedSlug}`} 
+            href={`/post/${lastSavedCategory}/${lastSavedSlug}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 bg-blue-900 text-white font-bold py-4 rounded-xl hover:bg-blue-800 shadow-lg shadow-blue-900/20 transition-all"
@@ -173,8 +175,6 @@ export const PostManager: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image</label>
-              
-              {/* URL Input */}
               <input
                 type="text"
                 placeholder="Paste image URL..."
@@ -182,8 +182,6 @@ export const PostManager: React.FC = () => {
                 value={currentPost.imageUrl || ''}
                 onChange={e => setCurrentPost({...currentPost, imageUrl: e.target.value})}
               />
-
-              {/* File Upload */}
               <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors mb-4 text-center">
                  <input
                     type="file"
@@ -200,8 +198,6 @@ export const PostManager: React.FC = () => {
                     <span className="text-xs text-gray-400">SVG, PNG, JPG or GIF</span>
                  </label>
               </div>
-
-              {/* Preview */}
               {currentPost.imageUrl && (
                 <div className="relative rounded-lg overflow-hidden border border-gray-200 group">
                   <img src={currentPost.imageUrl} alt="Preview" className="w-full h-48 object-cover" />
@@ -224,6 +220,7 @@ export const PostManager: React.FC = () => {
                  className="w-full border rounded px-3 py-2"
                  value={currentPost.category || ''}
                  onChange={e => setCurrentPost({...currentPost, category: e.target.value})}
+                 required
                >
                  <option value="">Select Category</option>
                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -304,7 +301,7 @@ export const PostManager: React.FC = () => {
                  <td className="p-4 text-right">
                    <div className="flex justify-end gap-2">
                      <a 
-                       href={`/post/${post.slug}`} 
+                       href={`/post/${post.category.toLowerCase()}/${post.slug}`} 
                        target="_blank" 
                        rel="noopener noreferrer"
                        className="p-2 text-gray-400 hover:text-[var(--primary)] transition-colors"

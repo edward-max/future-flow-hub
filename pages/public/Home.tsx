@@ -39,7 +39,6 @@ export const Home: React.FC = () => {
         {/* Animated Background */}
         <div className="absolute inset-0 z-0">
           <HeroBackground />
-          {/* Vignette Overlay for text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-gray-900/50 dark:from-black dark:to-black/50 pointer-events-none"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 via-transparent to-gray-900/80 dark:from-black/80 dark:to-black/80 pointer-events-none"></div>
         </div>
@@ -82,7 +81,8 @@ export const Home: React.FC = () => {
               <div className="p-8">
                  <span className="text-[var(--primary)] font-bold text-sm uppercase tracking-wider">{featuredPost.category}</span>
                  <h3 className="text-3xl font-bold mt-2 mb-4 group-hover:text-[var(--primary)] transition-colors dark:text-white leading-tight">
-                   <Link to={`/post/${featuredPost.slug}`}>{featuredPost.title}</Link>
+                   {/* Updated link with category */}
+                   <Link to={`/post/${featuredPost.category.toLowerCase()}/${featuredPost.slug}`}>{featuredPost.title}</Link>
                  </h3>
                  <p className="text-gray-600 dark:text-gray-300 mb-6 line-clamp-3">{featuredPost.excerpt}</p>
                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
@@ -112,7 +112,8 @@ export const Home: React.FC = () => {
                 </div>
                 <div className="p-6 flex flex-col flex-grow">
                    <h3 className="text-xl font-bold mb-2 group-hover:text-[var(--primary)] dark:text-white transition-colors">
-                     <Link to={`/post/${post.slug}`}>{post.title}</Link>
+                     {/* Updated link with category */}
+                     <Link to={`/post/${post.category.toLowerCase()}/${post.slug}`}>{post.title}</Link>
                    </h3>
                    <h2 className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2 flex-grow">{post.excerpt}</h2>
                    <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
@@ -137,16 +138,15 @@ export const Home: React.FC = () => {
                    <div>
                      <span className="text-xs font-semibold text-[var(--primary)] uppercase">{post.category}</span>
                      <h4 className="text-lg font-bold leading-snug group-hover:text-gray-600 dark:group-hover:text-gray-400 dark:text-gray-100 transition-colors">
-                       <Link to={`/post/${post.slug}`}>{post.title}</Link>
+                       {/* Updated link with category */}
+                       <Link to={`/post/${post.category.toLowerCase()}/${post.slug}`}>{post.title}</Link>
                      </h4>
                    </div>
                 </div>
               ))}
            </div>
            
-           {/* Newsletter Mini */}
            <div className="bg-[var(--primary)] rounded-2xl p-8 text-white flex flex-col justify-center shadow-lg relative overflow-hidden">
-             {/* Decorative circle */}
              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full transform translate-x-10 -translate-y-10"></div>
              
              <h3 className="text-2xl font-bold mb-4 relative z-10">Stay Ahead of the Curve</h3>

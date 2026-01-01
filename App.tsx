@@ -47,7 +47,8 @@ const App: React.FC = () => {
           {/* Public Routes Wrapped in Main Layout */}
           <Route path="/" element={<Layout><Home /></Layout>} />
           <Route path="/blog" element={<Layout><BlogList /></Layout>} />
-          <Route path="/post/:slug" element={<Layout><PostDetail /></Layout>} />
+          {/* Updated post route to include category */}
+          <Route path="/post/:category/:slug" element={<Layout><PostDetail /></Layout>} />
           <Route path="/contact" element={<Layout><Contact /></Layout>} />
           <Route path="/about" element={<Layout><About /></Layout>} />
 

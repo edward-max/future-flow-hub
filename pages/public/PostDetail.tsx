@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Calendar, User, Tag, Share2, MessageSquare, Send, Check, Facebook, Linkedin, Link as LinkIcon } from 'lucide-react';
+import { Calendar, User, Tag, MessageSquare, Send, Check, Facebook, Linkedin, Link as LinkIcon } from 'lucide-react';
 import { Comment } from '../../types';
 
 export const PostDetail: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
+  // Extract category and slug from URL
+  const { category, slug } = useParams<{ category: string; slug: string }>();
   const { posts, settings, addComment } = useApp();
-  const post = posts.find(p => p.slug === slug);
+  
+  // Find post matching both slug and category (case insensitive for category)
+  const post = posts.find(p => p.slug === slug && p.category.toLowerCase() === category?.toLowerCase());
 
   // Sharing state
   const [copied, setCopied] = useState(false);
@@ -112,7 +115,6 @@ export const PostDetail: React.FC = () => {
           <div className="flex flex-col items-center md:items-end gap-3">
              <span className="text-gray-500 text-xs font-bold uppercase tracking-widest dark:text-gray-400">Share this insight</span>
              <div className="flex gap-3 relative">
-                {/* Facebook */}
                 <button 
                   onClick={() => openPopup(shareUrls.facebook)}
                   className="p-3 bg-[#1877F2] text-white rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md"
@@ -121,7 +123,6 @@ export const PostDetail: React.FC = () => {
                   <Facebook size={18} fill="currentColor" />
                 </button>
 
-                {/* X / Twitter */}
                 <button 
                   onClick={() => openPopup(shareUrls.twitter)}
                   className="p-3 bg-black text-white rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md border border-gray-800"
@@ -130,7 +131,6 @@ export const PostDetail: React.FC = () => {
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                 </button>
 
-                {/* LinkedIn */}
                 <button 
                   onClick={() => openPopup(shareUrls.linkedin)}
                   className="p-3 bg-[#0077b5] text-white rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md"
@@ -139,7 +139,6 @@ export const PostDetail: React.FC = () => {
                   <Linkedin size={18} fill="currentColor" />
                 </button>
 
-                {/* Copy Link */}
                 <button 
                   onClick={copyToClipboard}
                   className={`p-3 ${copied ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'} rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md`}
@@ -164,7 +163,6 @@ export const PostDetail: React.FC = () => {
              <MessageSquare className="text-[var(--primary)]"/> Comments ({post.comments?.length || 0})
            </h3>
            
-           {/* Comment List */}
            <div className="space-y-6 mb-12">
              {post.comments && post.comments.length > 0 ? (
                post.comments.map(comment => (
@@ -186,7 +184,6 @@ export const PostDetail: React.FC = () => {
              )}
            </div>
 
-           {/* Comment Form */}
            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
               <h4 className="text-lg font-bold mb-4 dark:text-white">Leave a Reply</h4>
               <form onSubmit={handleCommentSubmit} className="space-y-4">
