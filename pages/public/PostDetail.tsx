@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Calendar, User, Tag, Share2, MessageSquare, Send } from 'lucide-react';
+import { Calendar, User, Tag, Share2, MessageSquare, Send, Check, Facebook, Linkedin, Link as LinkIcon } from 'lucide-react';
 import { Comment } from '../../types';
 
 export const PostDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { posts, settings, addComment } = useApp();
   const post = posts.find(p => p.slug === slug);
+
+  // Sharing state
+  const [copied, setCopied] = useState(false);
 
   // Dynamic SEO
   useEffect(() => {
@@ -50,6 +53,26 @@ export const PostDetail: React.FC = () => {
     setCommentText('');
   };
 
+  const shareUrls = {
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`,
+    twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(post.title)}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`
+  };
+
+  const openPopup = (url: string) => {
+    window.open(url, '_blank', 'width=600,height=400,location=0,menubar=0,toolbar=0');
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy!', err);
+    }
+  };
+
   return (
     <article className="pb-16 animate-fade-in">
       {/* Header */}
@@ -77,7 +100,7 @@ export const PostDetail: React.FC = () => {
         />
 
         {/* Tags & Share */}
-        <div className="border-t border-b border-gray-100 dark:border-gray-800 py-6 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="border-t border-b border-gray-100 dark:border-gray-800 py-8 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex flex-wrap gap-2">
             {post.tags.map(tag => (
               <span key={tag} className="flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full border border-transparent hover:border-[var(--primary)] cursor-default transition-colors">
@@ -85,9 +108,53 @@ export const PostDetail: React.FC = () => {
               </span>
             ))}
           </div>
-          <div className="flex gap-2">
-             <span className="text-gray-500 text-sm font-medium mr-2 self-center dark:text-gray-400">Share Story:</span>
-             <button className="p-2 bg-blue-600 text-white rounded-full hover:opacity-90 shadow-md transition-all active:scale-95"><Share2 size={16}/></button>
+          
+          <div className="flex flex-col items-center md:items-end gap-3">
+             <span className="text-gray-500 text-xs font-bold uppercase tracking-widest dark:text-gray-400">Share this insight</span>
+             <div className="flex gap-3 relative">
+                {/* Facebook */}
+                <button 
+                  onClick={() => openPopup(shareUrls.facebook)}
+                  className="p-3 bg-[#1877F2] text-white rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md"
+                  title="Share on Facebook"
+                >
+                  <Facebook size={18} fill="currentColor" />
+                </button>
+
+                {/* X / Twitter */}
+                <button 
+                  onClick={() => openPopup(shareUrls.twitter)}
+                  className="p-3 bg-black text-white rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md border border-gray-800"
+                  title="Share on X"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </button>
+
+                {/* LinkedIn */}
+                <button 
+                  onClick={() => openPopup(shareUrls.linkedin)}
+                  className="p-3 bg-[#0077b5] text-white rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md"
+                  title="Share on LinkedIn"
+                >
+                  <Linkedin size={18} fill="currentColor" />
+                </button>
+
+                {/* Copy Link */}
+                <button 
+                  onClick={copyToClipboard}
+                  className={`p-3 ${copied ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'} rounded-full hover:scale-110 hover:shadow-lg transition-all active:scale-95 shadow-md`}
+                  title="Copy Link"
+                >
+                  {copied ? <Check size={18} /> : <LinkIcon size={18}/>}
+                </button>
+
+                {copied && (
+                  <div className="absolute -top-12 right-0 bg-gray-900 text-white text-[10px] px-3 py-1.5 rounded-lg shadow-xl animate-fade-in flex items-center gap-1 whitespace-nowrap z-20 font-bold">
+                    <Check size={10} /> Copied!
+                    <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-900 rotate-45"></div>
+                  </div>
+                )}
+             </div>
           </div>
         </div>
 
