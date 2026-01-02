@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from '../../components/RichTextEditor';
-import { Trash2, Edit, Plus, X, Upload, CheckCircle, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Trash2, Edit, Plus, X, Upload, CheckCircle, ExternalLink, ArrowLeft, Eye, Calendar, Tag } from 'lucide-react';
 
 export const PostManager: React.FC = () => {
   const { posts, categories, addPost, updatePost, deletePost } = useApp();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastSavedSlug, setLastSavedSlug] = useState('');
   const [lastSavedCategory, setLastSavedCategory] = useState('');
@@ -16,6 +19,7 @@ export const PostManager: React.FC = () => {
     setCurrentPost(post);
     setIsEditing(true);
     setShowSuccess(false);
+    setShowPreview(false);
   };
 
   const handleCreate = () => {
@@ -32,13 +36,13 @@ export const PostManager: React.FC = () => {
     });
     setIsEditing(true);
     setShowSuccess(false);
+    setShowPreview(false);
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPost.title || !currentPost.content || !currentPost.category) return;
 
-    // Simple slug generator
     const slug = currentPost.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
     const finalPost = { ...currentPost, slug } as BlogPost;
 
@@ -89,15 +93,12 @@ export const PostManager: React.FC = () => {
         <p className="text-gray-500 mb-10 text-center max-w-md">Your story "{currentPost.title}" is now live and ready for the world to see.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg px-6">
-          {/* Updated link with category */}
-          <a 
-            href={`/post/${lastSavedCategory}/${lastSavedSlug}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
+          <button 
+            onClick={() => navigate(`/post/${lastSavedCategory}/${lastSavedSlug}`)}
             className="flex items-center justify-center gap-2 bg-blue-900 text-white font-bold py-4 rounded-xl hover:bg-blue-800 shadow-lg shadow-blue-900/20 transition-all"
           >
             <ExternalLink size={20} /> View Live Post
-          </a>
+          </button>
           <button 
             onClick={handleCreate}
             className="flex items-center justify-center gap-2 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-all"
@@ -120,8 +121,56 @@ export const PostManager: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">{currentPost.id && posts.find(p => p.id === currentPost.id) ? 'Edit Post' : 'New Post'}</h2>
-          <button onClick={() => setIsEditing(false)} className="text-gray-500 hover:text-gray-700"><X /></button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowPreview(true)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-2 transition-all"
+            >
+              <Eye size={18} /> Preview
+            </button>
+            <button onClick={() => setIsEditing(false)} className="p-2 text-gray-500 hover:text-gray-700"><X /></button>
+          </div>
         </div>
+
+        {/* Preview Modal Overlay */}
+        {showPreview && (
+          <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900 overflow-y-auto">
+            <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 p-4 flex justify-between items-center z-10 shadow-sm">
+              <span className="font-bold text-[var(--primary)]">Live Preview Mode</span>
+              <button 
+                onClick={() => setShowPreview(false)}
+                className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-gray-800"
+              >
+                <X size={18} /> Close Preview
+              </button>
+            </div>
+            
+            <article className="pb-16 animate-fade-in max-w-5xl mx-auto">
+              <div className="bg-gray-50 dark:bg-gray-800 py-12 text-center px-4">
+                <span className="text-blue-600 font-bold tracking-widest uppercase text-sm mb-4 block">{currentPost.category || 'Uncategorized'}</span>
+                <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-6">{currentPost.title || 'Untitled Post'}</h1>
+                <div className="flex items-center justify-center gap-4 text-gray-500 text-sm">
+                  <span className="flex items-center gap-1 font-medium text-gray-800 dark:text-gray-200">{currentPost.author}</span>
+                  <span>•</span>
+                  <span>{currentPost.date}</span>
+                </div>
+              </div>
+
+              {currentPost.imageUrl && (
+                <div className="px-4 -mt-6 mb-12">
+                  <img src={currentPost.imageUrl} alt="Header" className="w-full h-auto max-h-[500px] object-cover rounded-xl shadow-xl mx-auto" />
+                </div>
+              )}
+
+              <div className="px-4 max-w-3xl mx-auto">
+                <div 
+                  className="rich-text-editor prose prose-lg dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: currentPost.content || '<p className="text-gray-400 italic">No content yet...</p>' }}
+                />
+              </div>
+            </article>
+          </div>
+        )}
 
         <form onSubmit={handleSave} className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-6">
@@ -300,15 +349,13 @@ export const PostManager: React.FC = () => {
                  <td className="p-4 text-sm text-gray-600">{post.views}</td>
                  <td className="p-4 text-right">
                    <div className="flex justify-end gap-2">
-                     <a 
-                       href={`/post/${post.category.toLowerCase()}/${post.slug}`} 
-                       target="_blank" 
-                       rel="noopener noreferrer"
+                     <button 
+                       onClick={() => navigate(`/post/${post.category.toLowerCase()}/${post.slug}`)}
                        className="p-2 text-gray-400 hover:text-[var(--primary)] transition-colors"
                        title="View Live"
                      >
                        <ExternalLink size={18} />
-                     </a>
+                     </button>
                      <button onClick={() => handleEdit(post)} className="p-2 text-blue-500 hover:text-blue-700 transition-colors" title="Edit">
                        <Edit size={18} />
                      </button>
