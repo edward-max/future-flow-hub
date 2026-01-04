@@ -21,22 +21,45 @@ export const PostManager: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ultimateFixSql = `-- ULTIMATE DATABASE REPAIR & SYNC
--- 1. Ensure all columns exist with correct types
+
+-- 1. Create Settings Table if not exists
+CREATE TABLE IF NOT EXISTS public.settings (
+    id TEXT PRIMARY KEY DEFAULT 'main',
+    site_name TEXT DEFAULT 'Future Flow Hub',
+    tagline TEXT DEFAULT 'Your Daily Dose of Tech',
+    description TEXT,
+    logo_url TEXT,
+    favicon_url TEXT,
+    primary_color TEXT DEFAULT '#3b82f6',
+    font_family TEXT DEFAULT 'Inter',
+    layout_mode TEXT DEFAULT 'wide',
+    theme_mode TEXT DEFAULT 'light',
+    social_links JSONB DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 2. Ensure all Post columns exist
 ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS author TEXT DEFAULT 'Admin';
 ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
 ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
 ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
 ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS excerpt TEXT DEFAULT '';
 
--- 2. RESET POLICIES (Fixes "Permission Denied" errors)
+-- 3. RESET POLICIES
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "Allow Public Read" ON public.posts;
-DROP POLICY IF EXISTS "Allow Admin All" ON public.posts;
 CREATE POLICY "Allow Public Read" ON public.posts FOR SELECT TO public USING (published = true);
+DROP POLICY IF EXISTS "Allow Admin All" ON public.posts;
 CREATE POLICY "Allow Admin All" ON public.posts FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 3. FORCE SCHEMA CACHE RELOAD (Fixes "Column not found in cache" error)
--- This is the most important part!
+DROP POLICY IF EXISTS "Allow Public Read Settings" ON public.settings;
+CREATE POLICY "Allow Public Read Settings" ON public.settings FOR SELECT TO public USING (true);
+DROP POLICY IF EXISTS "Allow Admin All Settings" ON public.settings;
+CREATE POLICY "Allow Admin All Settings" ON public.settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 4. FORCE SCHEMA CACHE RELOAD
 NOTIFY pgrst, 'reload schema';`;
 
   const handleCopy = () => {
@@ -111,8 +134,7 @@ NOTIFY pgrst, 'reload schema';`;
       setIsEditing(false);
       refreshData();
     } catch (error: any) {
-      // The error message is now a string thanks to AppContext updates
-      setSaveError(error.message);
+      setSaveError(error.message || JSON.stringify(error));
     } finally {
       setIsSaving(false);
     }
@@ -137,18 +159,11 @@ NOTIFY pgrst, 'reload schema';`;
                 <div className="flex-grow">
                   <h3 className="font-bold text-red-900 mb-1">Database Sync Error</h3>
                   <p className="text-sm text-red-800 mb-4">{saveError}</p>
-                  
                   <div className="bg-white/60 rounded-xl p-5 border border-red-100">
-                    <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <Sparkles size={14} className="text-blue-600" /> 
-                      How to Fix: Run the script below in your Supabase SQL Editor
-                    </p>
+                    <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-2"><Sparkles size={14} className="text-blue-600" /> How to Fix: Run the script below in your Supabase SQL Editor</p>
                     <div className="relative group">
                        <pre className="bg-gray-900 text-blue-100 p-4 rounded-lg text-[10px] font-mono overflow-x-auto whitespace-pre">{ultimateFixSql}</pre>
-                       <button 
-                        onClick={handleCopy}
-                        className="absolute top-2 right-2 bg-blue-600 text-white px-3 py-1.5 rounded-md text-[10px] font-black shadow-lg flex items-center gap-1.5"
-                       >
+                       <button onClick={handleCopy} className="absolute top-2 right-2 bg-blue-600 text-white px-3 py-1.5 rounded-md text-[10px] font-black shadow-lg flex items-center gap-1.5">
                         {copied ? <RefreshCcw size={12} className="animate-spin" /> : <Copy size={12} />}
                         {copied ? 'COPIED!' : 'COPY SYNC SQL'}
                        </button>
@@ -162,59 +177,31 @@ NOTIFY pgrst, 'reload schema';`;
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-widest text-gray-400">Headline</label>
-              <input
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-lg"
-                value={currentPost.title || ''}
-                onChange={e => setCurrentPost({...currentPost, title: e.target.value})}
-                placeholder="The Future of Flow..."
-              />
+              <input className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-lg" value={currentPost.title || ''} onChange={e => setCurrentPost({...currentPost, title: e.target.value})} placeholder="The Future of Flow..." />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-widest text-gray-400">URL Identifier (Slug)</label>
-              <input
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-mono text-sm bg-gray-50"
-                value={currentPost.slug || ''}
-                onChange={e => setCurrentPost({...currentPost, slug: e.target.value})}
-                placeholder="auto-generated-slug"
-              />
+              <input className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-mono text-sm bg-gray-50" value={currentPost.slug || ''} onChange={e => setCurrentPost({...currentPost, slug: e.target.value})} placeholder="auto-generated-slug" />
             </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-black uppercase tracking-widest text-gray-400">Article Body</label>
-            <RichTextEditor 
-              key={currentPost.id || 'new'}
-              value={currentPost.content || ''} 
-              onChange={html => setCurrentPost({...currentPost, content: html})} 
-            />
+            <RichTextEditor key={currentPost.id || 'new'} value={currentPost.content || ''} onChange={html => setCurrentPost({...currentPost, content: html})} />
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</label>
-              <select 
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white"
-                value={currentPost.category}
-                onChange={e => setCurrentPost({...currentPost, category: e.target.value})}
-              >
+              <select className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white" value={currentPost.category} onChange={e => setCurrentPost({...currentPost, category: e.target.value})}>
                 {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div className="space-y-2 md:col-span-2">
                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Hero Image URL</label>
                <div className="flex gap-2">
-                  <input
-                    className="flex-grow border border-gray-300 rounded-xl px-4 py-3 text-sm"
-                    value={currentPost.cover_image || ''}
-                    onChange={e => setCurrentPost({...currentPost, cover_image: e.target.value})}
-                    placeholder="https://images.unsplash.com/..."
-                  />
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-gray-100 hover:bg-gray-200 px-4 rounded-xl transition-colors"
-                  >
-                    {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
-                  </button>
+                  <input className="flex-grow border border-gray-300 rounded-xl px-4 py-3 text-sm" value={currentPost.cover_image || ''} onChange={e => setCurrentPost({...currentPost, cover_image: e.target.value})} placeholder="https://images.unsplash.com/..." />
+                  <button onClick={() => fileInputRef.current?.click()} className="bg-gray-100 hover:bg-gray-200 px-4 rounded-xl transition-colors">{isUploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}</button>
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                </div>
             </div>
@@ -223,21 +210,11 @@ NOTIFY pgrst, 'reload schema';`;
           <div className="flex justify-between items-center p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
-                <input 
-                  type="checkbox"
-                  checked={currentPost.is_featured || false}
-                  onChange={e => setCurrentPost({...currentPost, is_featured: e.target.checked})}
-                  className="w-5 h-5 accent-blue-600 rounded-lg"
-                />
+                <input type="checkbox" checked={currentPost.is_featured || false} onChange={e => setCurrentPost({...currentPost, is_featured: e.target.checked})} className="w-5 h-5 accent-blue-600 rounded-lg" />
                 Feature in Hero
               </label>
               <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
-                <input 
-                  type="checkbox"
-                  checked={currentPost.published || false}
-                  onChange={e => setCurrentPost({...currentPost, published: e.target.checked})}
-                  className="w-5 h-5 accent-green-600 rounded-lg"
-                />
+                <input type="checkbox" checked={currentPost.published || false} onChange={e => setCurrentPost({...currentPost, published: e.target.checked})} className="w-5 h-5 accent-green-600 rounded-lg" />
                 Published
               </label>
             </div>

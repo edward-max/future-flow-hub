@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { BlogPost, Category, SiteSettings, Subscriber } from '../types';
 import { INITIAL_SETTINGS, INITIAL_CATEGORIES } from '../constants';
 import { supabase } from '../services/supabase';
@@ -13,7 +13,8 @@ interface AppContextType {
   subscribers: Subscriber[];
   isLoading: boolean;
   isAdminMode: boolean;
-  dbStatus: { categories: boolean; posts: boolean; subscribers: boolean };
+  isSavingSettings: boolean;
+  dbStatus: { categories: boolean; posts: boolean; subscribers: boolean; settings: boolean };
   user: User | null;
   refreshData: () => Promise<void>;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
@@ -34,11 +35,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [settings, setSettings] = useState<SiteSettings>(INITIAL_SETTINGS);
+  const [settings, setSettings] = useState<SiteSettings>(() => getFromStorage('ffh_settings_local', INITIAL_SETTINGS));
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [dbStatus, setDbStatus] = useState({ categories: true, posts: true, subscribers: true });
+  const [dbStatus, setDbStatus] = useState({ categories: true, posts: true, subscribers: true, settings: true });
 
   const isAdminMode = !!user;
 
@@ -54,9 +56,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Fetch Posts
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
@@ -71,6 +74,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveToStorage('ffh_posts_fallback', postsData);
       }
 
+      // Fetch Categories
       const { data: catsData, error: catsError } = await supabase
         .from('categories')
         .select('*')
@@ -83,6 +87,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCategories(catsData);
         setDbStatus(prev => ({ ...prev, categories: true }));
         saveToStorage('ffh_categories_fallback', catsData);
+      }
+
+      // Fetch Settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('id', 'main')
+        .maybeSingle();
+      
+      if (!settingsError && settingsData) {
+        setSettings(settingsData);
+        setDbStatus(prev => ({ ...prev, settings: true }));
+        saveToStorage('ffh_settings_local', settingsData);
+      } else {
+        // If it's a schema cache error or table missing error
+        if (settingsError?.code === 'PGRST204' || settingsError?.code === 'PGRST205' || settingsError?.message?.includes('cache')) {
+          setDbStatus(prev => ({ ...prev, settings: false }));
+        } else if (!settingsError && !settingsData) {
+          // Table exists but record doesn't
+          setDbStatus(prev => ({ ...prev, settings: true }));
+        } else {
+          setDbStatus(prev => ({ ...prev, settings: false }));
+        }
       }
 
       if (isAdminMode) {
@@ -103,22 +130,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isAdminMode]);
 
   useEffect(() => {
     fetchData();
-  }, [isAdminMode]);
+  }, [fetchData]);
 
   const login = async (email: string, pass: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) return { success: false, error: error.message };
-    setUser(data.user);
-    return { success: true };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (error) return { success: false, error: error.message };
+      setUser(data.user);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message || "Login failed" };
+    }
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+  };
+
+  const updateSettings = async (newSettings: SiteSettings) => {
+    // Optimistic Update
+    setSettings(newSettings);
+    saveToStorage('ffh_settings_local', newSettings);
+    setIsSavingSettings(true);
+
+    try {
+      const dbPayload = {
+        id: 'main',
+        site_name: newSettings.site_name,
+        tagline: newSettings.tagline,
+        description: newSettings.description,
+        logo_url: newSettings.logo_url,
+        favicon_url: newSettings.favicon_url,
+        primary_color: newSettings.primary_color,
+        font_family: newSettings.font_family,
+        layout_mode: newSettings.layout_mode,
+        theme_mode: newSettings.theme_mode,
+        social_links: newSettings.social_links,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('settings')
+        .upsert(dbPayload);
+      
+      if (error) {
+        console.error("Supabase Settings Update Error Detail:", JSON.stringify(error, null, 2));
+        // Check for common schema errors
+        if (error.code === 'PGRST205' || error.code === 'PGRST204') {
+          setDbStatus(prev => ({ ...prev, settings: false }));
+        }
+      } else {
+        setDbStatus(prev => ({ ...prev, settings: true }));
+      }
+    } catch (err: any) {
+      console.error("Settings Sync Network/Unexpected Error:", err?.message || err);
+      setDbStatus(prev => ({ ...prev, settings: false }));
+    } finally {
+      setIsSavingSettings(false);
+    }
   };
 
   const addPost = async (post: Omit<BlogPost, 'id' | 'created_at'>) => {
@@ -136,33 +210,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const { error } = await supabase.from('posts').insert([payload]);
-    if (error) {
-      // Extract clear message to avoid [object Object]
-      const errorMsg = error.message || JSON.stringify(error);
-      console.error("Supabase Insertion Error:", errorMsg);
-      throw new Error(errorMsg);
-    }
+    if (error) throw new Error(error.message || JSON.stringify(error));
     await fetchData();
   };
 
   const updatePost = async (post: BlogPost) => {
-    // Only send fields that are part of the table schema
     const { id, created_at, updated_at, ...updateData } = post;
-    
     const { error } = await supabase.from('posts').update(updateData).eq('id', id);
-    if (error) {
-      const errorMsg = error.message || JSON.stringify(error);
-      console.error("Supabase Update Error:", errorMsg);
-      throw new Error(errorMsg);
-    }
+    if (error) throw new Error(error.message || JSON.stringify(error));
     await fetchData();
   };
 
   const deletePost = async (id: string) => {
     const { error } = await supabase.from('posts').delete().eq('id', id);
-    if (error) {
-      throw new Error(error.message || "Failed to delete post.");
-    }
+    if (error) throw new Error(error.message || "Failed to delete post.");
     await fetchData();
   };
 
@@ -185,10 +246,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, fallback: !!error };
   };
 
-  const updateSettings = async (newSettings: SiteSettings) => {
-    setSettings(newSettings);
-  };
-
   const addSubscriber = async (email: string) => {
     const { error } = await supabase.from('subscribers').insert([{ email }]);
     if (error) return { success: false, message: error.message || "Subscription failed." };
@@ -203,7 +260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      posts, categories, settings, subscribers, isLoading, isAdminMode, dbStatus, user,
+      posts, categories, settings, subscribers, isLoading, isAdminMode, isSavingSettings, dbStatus, user,
       refreshData: fetchData,
       login, logout, addPost, updatePost, deletePost,
       addCategory, updateCategory, deleteCategory,

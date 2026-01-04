@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Clock, Eye, CheckCircle, Loader2, Calendar, User as UserIcon, FileWarning } from 'lucide-react';
+import { ArrowRight, Clock, Eye, CheckCircle, Loader2, Calendar, User as UserIcon, FileWarning, BookOpen } from 'lucide-react';
 import { HeroBackground } from '../../components/HeroBackground';
 
 export const Home: React.FC = () => {
@@ -49,6 +49,8 @@ export const Home: React.FC = () => {
       </div>
     );
   }
+
+  const postUrl = featuredPost ? `/post/${featuredPost.category?.toLowerCase() || 'general'}/${featuredPost.slug}` : '';
 
   return (
     <div className="bg-white dark:bg-gray-900 transition-colors duration-300">
@@ -108,28 +110,31 @@ export const Home: React.FC = () => {
               {/* Featured Post Hero Card */}
               {featuredPost && (
                 <section className="animate-fade-in">
-                  <div className="group relative bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700">
-                    <div className="aspect-[21/9] w-full overflow-hidden">
+                  <div className="group relative bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700 hover:shadow-[var(--primary)]/10 transition-all duration-500">
+                    <Link to={postUrl} className="block relative aspect-[21/9] w-full overflow-hidden">
                       <img
                         src={featuredPost.cover_image || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200'}
                         alt={featuredPost.title}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                    </div>
+                      <div className="absolute bottom-6 left-8">
+                         <span className="bg-[var(--primary)] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+                            Featured Story
+                         </span>
+                      </div>
+                    </Link>
                     
                     <div className="p-8 md:p-12">
                       <div className="flex items-center gap-3 mb-6">
-                        <span className="bg-[var(--primary)] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-                          Featured Story
-                        </span>
-                        <span className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest">
+                        <span className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                          <BookOpen size={14} className="text-[var(--primary)]" />
                           {featuredPost.category}
                         </span>
                       </div>
                       
                       <h2 className="text-3xl md:text-5xl font-black mb-6 dark:text-white leading-tight hover:text-[var(--primary)] transition-colors">
-                        <Link to={`/post/${featuredPost.category?.toLowerCase() || 'general'}/${featuredPost.slug}`}>
+                        <Link to={postUrl}>
                           {featuredPost.title}
                         </Link>
                       </h2>
@@ -137,6 +142,16 @@ export const Home: React.FC = () => {
                       <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 line-clamp-2 leading-relaxed">
                         {featuredPost.excerpt}
                       </p>
+
+                      <div className="mb-10">
+                        <Link 
+                          to={postUrl} 
+                          className="inline-flex items-center gap-3 bg-[var(--primary)] text-white px-8 py-3.5 rounded-xl font-bold text-sm shadow-xl shadow-[var(--primary)]/20 hover:opacity-90 transform transition-all active:scale-95 group/btn"
+                        >
+                          Read Full Article
+                          <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                        </Link>
+                      </div>
                       
                       <div className="flex flex-wrap items-center justify-between gap-6 pt-8 border-t border-gray-100 dark:border-gray-700">
                         <div className="flex items-center gap-4">
@@ -173,30 +188,35 @@ export const Home: React.FC = () => {
 
                 {otherPosts.length > 0 ? (
                   <div className="grid md:grid-cols-2 gap-8">
-                    {otherPosts.map(post => (
-                      <article key={post.id} className="group flex flex-col h-full bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-gray-700">
-                        <div className="aspect-video w-full overflow-hidden relative">
-                          <img src={post.cover_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800'} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          <div className="absolute top-4 left-4">
-                             <span className="bg-white/90 dark:bg-black/80 backdrop-blur px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg dark:text-white shadow-sm border border-gray-100 dark:border-gray-800">
-                               {post.category || 'General'}
-                             </span>
-                          </div>
-                        </div>
-                        <div className="p-8 flex flex-col flex-grow">
-                          <h4 className="text-xl font-black mb-4 group-hover:text-[var(--primary)] dark:text-white transition-colors leading-tight">
-                            <Link to={`/post/${post.category?.toLowerCase() || 'general'}/${post.slug}`}>{post.title}</Link>
-                          </h4>
-                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 line-clamp-2 flex-grow leading-relaxed">
-                            {post.excerpt}
-                          </p>
-                          <div className="flex items-center justify-between pt-6 border-t border-gray-50 dark:border-gray-700 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                            <span className="flex items-center gap-2"><Clock size={14} /> {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}</span>
-                            <span className="flex items-center gap-2 text-[var(--primary)] hover:underline cursor-pointer">Read Full Story <ArrowRight size={12} /></span>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
+                    {otherPosts.map(post => {
+                      const itemUrl = `/post/${post.category?.toLowerCase() || 'general'}/${post.slug}`;
+                      return (
+                        <Link key={post.id} to={itemUrl} className="group block h-full">
+                          <article className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-700">
+                            <div className="aspect-video w-full overflow-hidden relative">
+                              <img src={post.cover_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800'} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <div className="absolute top-4 left-4">
+                                 <span className="bg-white/90 dark:bg-black/80 backdrop-blur px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg dark:text-white shadow-sm border border-gray-100 dark:border-gray-800">
+                                   {post.category || 'General'}
+                                 </span>
+                              </div>
+                            </div>
+                            <div className="p-8 flex flex-col flex-grow">
+                              <h4 className="text-xl font-black mb-4 group-hover:text-[var(--primary)] dark:text-white transition-colors leading-tight">
+                                {post.title}
+                              </h4>
+                              <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 line-clamp-2 flex-grow leading-relaxed">
+                                {post.excerpt}
+                              </p>
+                              <div className="flex items-center justify-between pt-6 border-t border-gray-50 dark:border-gray-700 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                <span className="flex items-center gap-2"><Clock size={14} /> {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}</span>
+                                <span className="flex items-center gap-2 text-[var(--primary)] group-hover:translate-x-1 transition-transform">Read Full Story <ArrowRight size={12} /></span>
+                              </div>
+                            </div>
+                          </article>
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="bg-gray-50 dark:bg-gray-800/50 rounded-3xl p-12 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
@@ -272,7 +292,7 @@ export const Home: React.FC = () => {
                     </button>
                   </form>
                 )}
-                <p className="mt-6 text-[10px] text-center opacity-60 font-bold uppercase tracking-widest">No Spam. Just Quality Content.</p>
+                <p className="mt-6 text-[10px] text-center opacity-60 font-bold uppercase tracking-widest" id="newsletter">No Spam. Just Quality Content.</p>
               </div>
             </aside>
           </div>
