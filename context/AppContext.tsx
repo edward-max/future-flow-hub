@@ -1,153 +1,213 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BlogPost, Category, SiteSettings, Comment, Subscriber } from '../types';
-import { INITIAL_POSTS, INITIAL_CATEGORIES, INITIAL_SETTINGS, INITIAL_SUBSCRIBERS, ADMIN_CREDENTIALS } from '../constants';
+import { BlogPost, Category, SiteSettings, Subscriber } from '../types';
+import { INITIAL_SETTINGS, INITIAL_CATEGORIES } from '../constants';
+import { supabase } from '../services/supabase';
 import { getFromStorage, saveToStorage } from '../services/storage';
+import { User } from '@supabase/supabase-js';
 
 interface AppContextType {
   posts: BlogPost[];
   categories: Category[];
   settings: SiteSettings;
   subscribers: Subscriber[];
+  isLoading: boolean;
   isAdminMode: boolean;
-  login: (u: string, p: string) => boolean;
-  logout: () => void;
-  addPost: (post: BlogPost) => void;
-  updatePost: (post: BlogPost) => void;
-  deletePost: (id: string) => void;
-  updateSettings: (settings: SiteSettings) => void;
-  addCategory: (category: Category) => void;
-  addComment: (postId: string, comment: Comment) => void;
-  addSubscriber: (email: string) => { success: boolean; message: string };
-  removeSubscriber: (id: string) => void;
+  dbStatus: { categories: boolean; posts: boolean; subscribers: boolean };
+  user: User | null;
+  refreshData: () => Promise<void>;
+  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  addPost: (post: Omit<BlogPost, 'id' | 'created_at'>) => Promise<void>;
+  updatePost: (post: BlogPost) => Promise<void>;
+  deletePost: (id: string) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id'>) => Promise<{ success: boolean; error?: any; fallback?: boolean }>;
+  updateCategory: (category: Category) => Promise<{ success: boolean; error?: any; fallback?: boolean }>;
+  deleteCategory: (id: string) => Promise<{ success: boolean; error?: any; fallback?: boolean }>;
+  updateSettings: (settings: SiteSettings) => Promise<void>;
+  addSubscriber: (email: string) => Promise<{ success: boolean; message: string }>;
+  removeSubscriber: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [posts, setPosts] = useState<BlogPost[]>(() => getFromStorage('ffh_posts', INITIAL_POSTS));
-  const [categories, setCategories] = useState<Category[]>(() => getFromStorage('ffh_categories', INITIAL_CATEGORIES));
-  const [settings, setSettings] = useState<SiteSettings>(() => getFromStorage('ffh_settings', INITIAL_SETTINGS));
-  const [subscribers, setSubscribers] = useState<Subscriber[]>(() => getFromStorage('ffh_subscribers', INITIAL_SUBSCRIBERS));
-  
-  // Use session storage for auth state so it persists on refresh but clears on browser close
-  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [settings, setSettings] = useState<SiteSettings>(INITIAL_SETTINGS);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [dbStatus, setDbStatus] = useState({ categories: true, posts: true, subscribers: true });
 
-  // Apply Theme Side Effect
+  const isAdminMode = !!user;
+
   useEffect(() => {
-    if (settings.themeMode === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (postsError) {
+        setDbStatus(prev => ({ ...prev, posts: false }));
+        setPosts(getFromStorage('ffh_posts_fallback', []));
+      } else if (postsData) {
+        setPosts(postsData);
+        setDbStatus(prev => ({ ...prev, posts: true }));
+        saveToStorage('ffh_posts_fallback', postsData);
+      }
+
+      const { data: catsData, error: catsError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (catsError) {
+        setDbStatus(prev => ({ ...prev, categories: false }));
+        setCategories(getFromStorage('ffh_categories_fallback', INITIAL_CATEGORIES));
+      } else if (catsData) {
+        setCategories(catsData);
+        setDbStatus(prev => ({ ...prev, categories: true }));
+        saveToStorage('ffh_categories_fallback', catsData);
+      }
+
+      if (isAdminMode) {
+        const { data: subsData, error: subsError } = await supabase
+          .from('subscribers')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (subsError) {
+          setDbStatus(prev => ({ ...prev, subscribers: false }));
+        } else if (subsData) {
+          setSubscribers(subsData);
+          setDbStatus(prev => ({ ...prev, subscribers: true }));
+        }
+      }
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [settings.themeMode]);
+  };
 
-  // Apply Favicon Side Effect
   useEffect(() => {
-    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
+    fetchData();
+  }, [isAdminMode]);
+
+  const login = async (email: string, pass: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) return { success: false, error: error.message };
+    setUser(data.user);
+    return { success: true };
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  const addPost = async (post: Omit<BlogPost, 'id' | 'created_at'>) => {
+    const payload = {
+      title: post.title,
+      slug: post.slug.toLowerCase(),
+      content: post.content,
+      excerpt: post.excerpt || '',
+      cover_image: post.cover_image || '',
+      category: post.category || 'General',
+      author: post.author || 'Admin',
+      published: post.published ?? true,
+      is_featured: post.is_featured || false,
+      views: post.views || 0
+    };
+
+    const { error } = await supabase.from('posts').insert([payload]);
+    if (error) {
+      // Extract clear message to avoid [object Object]
+      const errorMsg = error.message || JSON.stringify(error);
+      console.error("Supabase Insertion Error:", errorMsg);
+      throw new Error(errorMsg);
     }
-    if (settings.faviconUrl) {
-      link.href = settings.faviconUrl;
+    await fetchData();
+  };
+
+  const updatePost = async (post: BlogPost) => {
+    // Only send fields that are part of the table schema
+    const { id, created_at, updated_at, ...updateData } = post;
+    
+    const { error } = await supabase.from('posts').update(updateData).eq('id', id);
+    if (error) {
+      const errorMsg = error.message || JSON.stringify(error);
+      console.error("Supabase Update Error:", errorMsg);
+      throw new Error(errorMsg);
     }
-  }, [settings.faviconUrl]);
+    await fetchData();
+  };
 
-  useEffect(() => {
-    saveToStorage('ffh_posts', posts);
-  }, [posts]);
-
-  useEffect(() => {
-    saveToStorage('ffh_categories', categories);
-  }, [categories]);
-
-  useEffect(() => {
-    saveToStorage('ffh_settings', settings);
-  }, [settings]);
-
-  useEffect(() => {
-    saveToStorage('ffh_subscribers', subscribers);
-  }, [subscribers]);
-
-  const login = (u: string, p: string) => {
-    if (u === ADMIN_CREDENTIALS.username && p === ADMIN_CREDENTIALS.password) {
-      setIsAdminMode(true);
-      return true;
+  const deletePost = async (id: string) => {
+    const { error } = await supabase.from('posts').delete().eq('id', id);
+    if (error) {
+      throw new Error(error.message || "Failed to delete post.");
     }
-    return false;
+    await fetchData();
   };
 
-  const logout = () => {
-    setIsAdminMode(false);
+  const addCategory = async (category: Omit<Category, 'id'>) => {
+    const { error } = await supabase.from('categories').insert([category]);
+    if (error) return { success: false, error };
+    await fetchData();
+    return { success: true };
   };
 
-  const addPost = (post: BlogPost) => {
-    setPosts(prev => [post, ...prev]);
+  const updateCategory = async (category: Category) => {
+    const { error } = await supabase.from('categories').update(category).eq('id', category.id);
+    if (!error) await fetchData();
+    return { success: true, fallback: !!error };
   };
 
-  const updatePost = (updatedPost: BlogPost) => {
-    setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+  const deleteCategory = async (id: string) => {
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (!error) await fetchData();
+    return { success: true, fallback: !!error };
   };
 
-  const deletePost = (id: string) => {
-    setPosts(prev => prev.filter(p => p.id !== id));
-  };
-
-  const updateSettings = (newSettings: SiteSettings) => {
+  const updateSettings = async (newSettings: SiteSettings) => {
     setSettings(newSettings);
   };
 
-  const addCategory = (category: Category) => {
-    setCategories(prev => [...prev, category]);
+  const addSubscriber = async (email: string) => {
+    const { error } = await supabase.from('subscribers').insert([{ email }]);
+    if (error) return { success: false, message: error.message || "Subscription failed." };
+    await fetchData();
+    return { success: true, message: "Subscribed successfully!" };
   };
 
-  const addComment = (postId: string, comment: Comment) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        const updatedComments = p.comments ? [...p.comments, comment] : [comment];
-        return { ...p, comments: updatedComments };
-      }
-      return p;
-    }));
-  };
-
-  const addSubscriber = (email: string) => {
-    const exists = subscribers.find(s => s.email.toLowerCase() === email.toLowerCase());
-    if (exists) {
-      return { success: false, message: "This email is already subscribed." };
-    }
-    const newSubscriber: Subscriber = {
-      id: Date.now().toString(),
-      email,
-      date: new Date().toLocaleDateString()
-    };
-    setSubscribers(prev => [...prev, newSubscriber]);
-    return { success: true, message: "Successfully subscribed!" };
-  };
-
-  const removeSubscriber = (id: string) => {
-    setSubscribers(prev => prev.filter(s => s.id !== id));
+  const removeSubscriber = async (id: string) => {
+    await supabase.from('subscribers').delete().eq('id', id);
+    await fetchData();
   };
 
   return (
     <AppContext.Provider value={{
-      posts,
-      categories,
-      settings,
-      subscribers,
-      isAdminMode,
-      login,
-      logout,
-      addPost,
-      updatePost,
-      deletePost,
-      updateSettings,
-      addCategory,
-      addComment,
-      addSubscriber,
-      removeSubscriber
+      posts, categories, settings, subscribers, isLoading, isAdminMode, dbStatus, user,
+      refreshData: fetchData,
+      login, logout, addPost, updatePost, deletePost,
+      addCategory, updateCategory, deleteCategory,
+      updateSettings, addSubscriber, removeSubscriber
     }}>
       {children}
     </AppContext.Provider>

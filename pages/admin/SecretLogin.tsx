@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { ShieldCheck, Lock, User } from 'lucide-react';
+import { ShieldCheck, Lock, Mail } from 'lucide-react';
 
 export const SecretLogin: React.FC = () => {
   const { isAdminMode, login } = useApp();
   const navigate = useNavigate();
   
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // If already logged in, go straight to dashboard
   useEffect(() => {
@@ -18,15 +19,19 @@ export const SecretLogin: React.FC = () => {
     }
   }, [isAdminMode, navigate]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(username, password);
-    if (success) {
+    setIsLoading(true);
+    setError('');
+    
+    const result = await login(email, password);
+    if (result.success) {
       navigate('/admin/dashboard');
     } else {
-      setError('Invalid credentials. Access denied.');
+      setError(result.error || 'Invalid credentials. Access denied.');
       setPassword('');
     }
+    setIsLoading(false);
   };
 
   return (
@@ -36,21 +41,22 @@ export const SecretLogin: React.FC = () => {
           <ShieldCheck size={32} />
         </div>
         <h1 className="text-2xl font-bold mb-2 text-gray-800">Admin Portal</h1>
-        <p className="mb-6 text-gray-500 text-sm">Please authenticate to continue.</p>
+        <p className="mb-6 text-gray-500 text-sm">Please authenticate with your Supabase credentials.</p>
         
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
             <div className="relative">
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none"
-                placeholder="Enter username"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none transition-all"
+                placeholder="admin@example.com"
                 required
+                disabled={isLoading}
               />
-              <User size={18} className="absolute left-3 top-3.5 text-gray-400" />
+              <Mail size={18} className="absolute left-3 top-3.5 text-gray-400" />
             </div>
           </div>
           
@@ -61,26 +67,36 @@ export const SecretLogin: React.FC = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none transition-all"
                 placeholder="Enter password"
                 required
+                disabled={isLoading}
               />
               <Lock size={18} className="absolute left-3 top-3.5 text-gray-400" />
             </div>
           </div>
 
-          {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
+          {error && <p className="text-red-500 text-sm font-medium text-center bg-red-50 p-2 rounded">{error}</p>}
 
           <button
             type="submit"
-            className="w-full bg-blue-900 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-800 transition-all shadow-lg shadow-blue-900/30 transform hover:-translate-y-1 mt-2"
+            disabled={isLoading}
+            className="w-full bg-blue-900 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-800 transition-all shadow-lg shadow-blue-900/30 transform hover:-translate-y-1 mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Authenticate
+            {isLoading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Authenticating...
+              </>
+            ) : 'Authenticate'}
           </button>
         </form>
         
         <p className="mt-6 text-xs text-gray-400">
-          Unauthorized access is prohibited and logged.
+          Unauthorized access is strictly prohibited.
         </p>
       </div>
     </div>

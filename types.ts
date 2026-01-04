@@ -1,22 +1,4 @@
 
-export interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string; // HTML/Rich Text
-  author: string;
-  date: string;
-  category: string;
-  tags: string[];
-  imageUrl: string;
-  featured: boolean;
-  views: number;
-  comments?: Comment[];
-  // SEO
-  metaTitle?: string;
-  metaDescription?: string;
-}
 
 export interface Category {
   id: string;
@@ -24,17 +6,39 @@ export interface Category {
   slug: string;
 }
 
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  cover_image: string;
+  published: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Metadata
+  author?: string;
+  category?: string;
+  tags?: string[];
+  is_featured?: boolean;
+  views?: number;
+  meta_title?: string;
+  meta_description?: string;
+  comments?: any[];
+}
+
 export interface SiteSettings {
-  siteName: string;
+  id?: string;
+  site_name: string;
   tagline: string;
   description: string;
-  logoUrl?: string;
-  faviconUrl?: string;
-  primaryColor: string; // Hex code
-  fontFamily: 'Inter' | 'Merriweather' | 'Space Grotesk';
-  layoutMode: 'wide' | 'boxed';
-  themeMode: 'light' | 'dark';
-  socialLinks: {
+  logo_url?: string;
+  favicon_url?: string;
+  primary_color: string;
+  font_family: 'Inter' | 'Merriweather' | 'Space Grotesk';
+  layout_mode: 'wide' | 'boxed';
+  theme_mode: 'light' | 'dark';
+  social_links: {
     facebook?: string;
     twitter?: string;
     whatsapp?: string;
@@ -42,22 +46,8 @@ export interface SiteSettings {
   };
 }
 
-export interface Comment {
-  id: string;
-  postId: string;
-  user: string;
-  text: string;
-  date: string;
-}
-
 export interface Subscriber {
   id: string;
   email: string;
-  date: string;
-}
-
-export interface User {
-  name: string;
-  email: string;
-  role: 'admin' | 'editor' | 'guest';
+  created_at: string;
 }

@@ -13,7 +13,7 @@ export const Settings: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        handleChange('logoUrl', reader.result as string);
+        handleChange('logo_url', reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -24,7 +24,7 @@ export const Settings: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        handleChange('faviconUrl', reader.result as string);
+        handleChange('favicon_url', reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -43,8 +43,8 @@ export const Settings: React.FC = () => {
                <label className="block text-sm font-medium mb-1">Site Name</label>
                <input
                  className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-900 outline-none"
-                 value={settings.siteName}
-                 onChange={(e) => handleChange('siteName', e.target.value)}
+                 value={settings.site_name}
+                 onChange={(e) => handleChange('site_name', e.target.value)}
                />
              </div>
              
@@ -54,8 +54,8 @@ export const Settings: React.FC = () => {
                  <input
                    className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-900 outline-none"
                    placeholder="https://example.com/logo.png"
-                   value={settings.logoUrl || ''}
-                   onChange={(e) => handleChange('logoUrl', e.target.value)}
+                   value={settings.logo_url || ''}
+                   onChange={(e) => handleChange('logo_url', e.target.value)}
                  />
                  <div className="flex items-center gap-2 p-3 border border-dashed border-gray-300 rounded bg-gray-50">
                     <span className="text-sm text-gray-500 whitespace-nowrap font-medium">Upload Logo:</span>
@@ -68,11 +68,11 @@ export const Settings: React.FC = () => {
                  </div>
                </div>
                
-               {settings.logoUrl && (
+               {settings.logo_url && (
                  <div className="mt-3 p-4 border rounded bg-gray-50 flex items-center justify-center relative group">
-                   <img src={settings.logoUrl} alt="Preview" className="h-16 object-contain" />
+                   <img src={settings.logo_url} alt="Preview" className="h-16 object-contain" />
                    <button 
-                       onClick={() => handleChange('logoUrl', '')}
+                       onClick={() => handleChange('logo_url', '')}
                        className="absolute top-2 right-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-full p-1.5 transition-colors"
                        title="Remove Logo"
                    >
@@ -88,8 +88,8 @@ export const Settings: React.FC = () => {
                  <input
                    className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-900 outline-none"
                    placeholder="https://example.com/favicon.ico"
-                   value={settings.faviconUrl || ''}
-                   onChange={(e) => handleChange('faviconUrl', e.target.value)}
+                   value={settings.favicon_url || ''}
+                   onChange={(e) => handleChange('favicon_url', e.target.value)}
                  />
                  <div className="flex items-center gap-2 p-3 border border-dashed border-gray-300 rounded bg-gray-50">
                     <span className="text-sm text-gray-500 whitespace-nowrap font-medium">Upload Favicon:</span>
@@ -102,11 +102,11 @@ export const Settings: React.FC = () => {
                  </div>
                </div>
                
-               {settings.faviconUrl && (
+               {settings.favicon_url && (
                  <div className="mt-3 p-4 border rounded bg-gray-50 flex items-center justify-center relative group">
-                   <img src={settings.faviconUrl} alt="Favicon Preview" className="h-8 w-8 object-contain" />
+                   <img src={settings.favicon_url} alt="Favicon Preview" className="h-8 w-8 object-contain" />
                    <button 
-                       onClick={() => handleChange('faviconUrl', '')}
+                       onClick={() => handleChange('favicon_url', '')}
                        className="absolute top-2 right-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-full p-1.5 transition-colors"
                        title="Remove Favicon"
                    >
@@ -144,8 +144,8 @@ export const Settings: React.FC = () => {
                <div className="flex gap-4">
                  <input
                    type="color"
-                   value={settings.primaryColor}
-                   onChange={(e) => handleChange('primaryColor', e.target.value)}
+                   value={settings.primary_color}
+                   onChange={(e) => handleChange('primary_color', e.target.value)}
                    className="h-10 w-20 rounded cursor-pointer border border-gray-200"
                  />
                  <div className="flex-1 text-xs text-gray-500 flex items-center">
@@ -160,8 +160,8 @@ export const Settings: React.FC = () => {
                  {['Inter', 'Merriweather', 'Space Grotesk'].map(font => (
                    <button
                      key={font}
-                     onClick={() => handleChange('fontFamily', font)}
-                     className={`border rounded px-3 py-2 text-sm transition-all ${settings.fontFamily === font ? 'border-blue-900 bg-blue-50 text-blue-900 font-bold' : 'hover:bg-gray-50'}`}
+                     onClick={() => handleChange('font_family', font)}
+                     className={`border rounded px-3 py-2 text-sm transition-all ${settings.font_family === font ? 'border-blue-900 bg-blue-50 text-blue-900 font-bold' : 'hover:bg-gray-50'}`}
                      style={{ fontFamily: font }}
                    >
                      {font}
@@ -177,8 +177,8 @@ export const Settings: React.FC = () => {
                     <input
                       type="radio"
                       name="layout"
-                      checked={settings.layoutMode === 'wide'}
-                      onChange={() => handleChange('layoutMode', 'wide')}
+                      checked={settings.layout_mode === 'wide'}
+                      onChange={() => handleChange('layout_mode', 'wide')}
                       className="text-blue-900 focus:ring-blue-900"
                     />
                     <span className="text-sm">Full Width</span>
@@ -187,8 +187,8 @@ export const Settings: React.FC = () => {
                     <input
                       type="radio"
                       name="layout"
-                      checked={settings.layoutMode === 'boxed'}
-                      onChange={() => handleChange('layoutMode', 'boxed')}
+                      checked={settings.layout_mode === 'boxed'}
+                      onChange={() => handleChange('layout_mode', 'boxed')}
                       className="text-blue-900 focus:ring-blue-900"
                     />
                     <span className="text-sm">Boxed</span>

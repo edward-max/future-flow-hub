@@ -1,374 +1,313 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
+import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from '../../components/RichTextEditor';
-import { Trash2, Edit, Plus, X, Upload, CheckCircle, ExternalLink, ArrowLeft, Eye, Calendar, Tag } from 'lucide-react';
+import { uploadFile } from '../../services/supabase';
+import { 
+  Trash2, Edit, Plus, X, Save, Eye, Globe, Lock, 
+  Image as ImageIcon, Settings, FileText, Upload, Loader2, Send, Star, AlertCircle, ShieldAlert, Sparkles, RefreshCcw, Copy
+} from 'lucide-react';
 
 export const PostManager: React.FC = () => {
-  const { posts, categories, addPost, updatePost, deletePost } = useApp();
-  const navigate = useNavigate();
+  const { posts, categories, addPost, updatePost, deletePost, refreshData } = useApp();
   const [isEditing, setIsEditing] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [lastSavedSlug, setLastSavedSlug] = useState('');
-  const [lastSavedCategory, setLastSavedCategory] = useState('');
   const [currentPost, setCurrentPost] = useState<Partial<BlogPost>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ultimateFixSql = `-- ULTIMATE DATABASE REPAIR & SYNC
+-- 1. Ensure all columns exist with correct types
+ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS author TEXT DEFAULT 'Admin';
+ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
+ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
+ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
+ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS excerpt TEXT DEFAULT '';
+
+-- 2. RESET POLICIES (Fixes "Permission Denied" errors)
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow Public Read" ON public.posts;
+DROP POLICY IF EXISTS "Allow Admin All" ON public.posts;
+CREATE POLICY "Allow Public Read" ON public.posts FOR SELECT TO public USING (published = true);
+CREATE POLICY "Allow Admin All" ON public.posts FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 3. FORCE SCHEMA CACHE RELOAD (Fixes "Column not found in cache" error)
+-- This is the most important part!
+NOTIFY pgrst, 'reload schema';`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(ultimateFixSql);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleEdit = (post: BlogPost) => {
     setCurrentPost(post);
+    setSaveError(null);
     setIsEditing(true);
-    setShowSuccess(false);
-    setShowPreview(false);
   };
 
   const handleCreate = () => {
     setCurrentPost({
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      views: 0,
-      featured: false,
+      title: '',
+      slug: '',
       content: '',
-      tags: [],
-      author: 'Eddy',
-      comments: [],
-      imageUrl: 'https://picsum.photos/800/400'
+      excerpt: '',
+      cover_image: '',
+      category: categories[0]?.name || 'General',
+      published: true,
+      is_featured: false,
+      author: 'Admin',
+      views: 0
     });
+    setSaveError(null);
     setIsEditing(true);
-    setShowSuccess(false);
-    setShowPreview(false);
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPost.title || !currentPost.content || !currentPost.category) return;
-
-    const slug = currentPost.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-    const finalPost = { ...currentPost, slug } as BlogPost;
-
-    if (posts.find(p => p.id === finalPost.id)) {
-      updatePost(finalPost);
-    } else {
-      addPost(finalPost);
-    }
-    
-    setLastSavedSlug(slug);
-    setLastSavedCategory(currentPost.category.toLowerCase());
-    setShowSuccess(true);
-    setIsEditing(false);
+  const generateSlug = (title: string) => {
+    return title.toLowerCase().trim().replace(/ /g, '-').replace(/[^\w-]+/g, '').replace(/--+/g, '-');
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
-      deletePost(id);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCurrentPost({ ...currentPost, imageUrl: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const url = await uploadFile(file, 'blog-assets');
+      setCurrentPost(prev => ({ ...prev, cover_image: url }));
+    } catch (err: any) {
+      setUploadError(err.message || "Upload failed.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const getSeoScore = () => {
-    let score = 0;
-    if (currentPost.metaTitle && currentPost.metaTitle.length > 30) score += 40;
-    if (currentPost.metaDescription && currentPost.metaDescription.length > 50) score += 40;
-    if (currentPost.slug) score += 20;
-    return score;
-  };
+  const handleSave = async (publish: boolean) => {
+    setSaveError(null);
+    if (!currentPost.title || !currentPost.content) {
+      setSaveError("Please enter a title and content for your article.");
+      return;
+    }
 
-  if (showSuccess) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
-        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-          <CheckCircle size={48} />
-        </div>
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Post Published!</h2>
-        <p className="text-gray-500 mb-10 text-center max-w-md">Your story "{currentPost.title}" is now live and ready for the world to see.</p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg px-6">
-          <button 
-            onClick={() => navigate(`/post/${lastSavedCategory}/${lastSavedSlug}`)}
-            className="flex items-center justify-center gap-2 bg-blue-900 text-white font-bold py-4 rounded-xl hover:bg-blue-800 shadow-lg shadow-blue-900/20 transition-all"
-          >
-            <ExternalLink size={20} /> View Live Post
-          </button>
-          <button 
-            onClick={handleCreate}
-            className="flex items-center justify-center gap-2 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-all"
-          >
-            <Plus size={20} /> Create New Post
-          </button>
-          <button 
-            onClick={() => setShowSuccess(false)}
-            className="md:col-span-2 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-50 transition-all"
-          >
-            <ArrowLeft size={20} /> Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
+    setIsSaving(true);
+    try {
+      const slug = currentPost.slug || generateSlug(currentPost.title);
+      const postData = {
+        ...currentPost,
+        slug,
+        published: publish,
+      };
+
+      if (currentPost.id) {
+        await updatePost(postData as BlogPost);
+      } else {
+        await addPost(postData as Omit<BlogPost, 'id' | 'created_at'>);
+      }
+      setIsEditing(false);
+      refreshData();
+    } catch (error: any) {
+      // The error message is now a string thanks to AppContext updates
+      setSaveError(error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (isEditing) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">{currentPost.id && posts.find(p => p.id === currentPost.id) ? 'Edit Post' : 'New Post'}</h2>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowPreview(true)}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-2 transition-all"
-            >
-              <Eye size={18} /> Preview
-            </button>
-            <button onClick={() => setIsEditing(false)} className="p-2 text-gray-500 hover:text-gray-700"><X /></button>
-          </div>
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in max-w-5xl mx-auto mb-20">
+        <div className="bg-gray-50 border-b border-gray-200 px-8 py-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            {currentPost.id ? <Edit size={20} className="text-blue-600" /> : <Plus size={20} className="text-blue-600" />}
+            {currentPost.id ? 'Edit Story' : 'New Story'}
+          </h2>
+          <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><X size={24} /></button>
         </div>
 
-        {/* Preview Modal Overlay */}
-        {showPreview && (
-          <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900 overflow-y-auto">
-            <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 p-4 flex justify-between items-center z-10 shadow-sm">
-              <span className="font-bold text-[var(--primary)]">Live Preview Mode</span>
-              <button 
-                onClick={() => setShowPreview(false)}
-                className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-gray-800"
-              >
-                <X size={18} /> Close Preview
-              </button>
+        <div className="p-8 space-y-8">
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-6 animate-fade-in">
+              <div className="flex items-start gap-4">
+                <ShieldAlert className="text-red-600 shrink-0 mt-1" size={24} />
+                <div className="flex-grow">
+                  <h3 className="font-bold text-red-900 mb-1">Database Sync Error</h3>
+                  <p className="text-sm text-red-800 mb-4">{saveError}</p>
+                  
+                  <div className="bg-white/60 rounded-xl p-5 border border-red-100">
+                    <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-2">
+                      <Sparkles size={14} className="text-blue-600" /> 
+                      How to Fix: Run the script below in your Supabase SQL Editor
+                    </p>
+                    <div className="relative group">
+                       <pre className="bg-gray-900 text-blue-100 p-4 rounded-lg text-[10px] font-mono overflow-x-auto whitespace-pre">{ultimateFixSql}</pre>
+                       <button 
+                        onClick={handleCopy}
+                        className="absolute top-2 right-2 bg-blue-600 text-white px-3 py-1.5 rounded-md text-[10px] font-black shadow-lg flex items-center gap-1.5"
+                       >
+                        {copied ? <RefreshCcw size={12} className="animate-spin" /> : <Copy size={12} />}
+                        {copied ? 'COPIED!' : 'COPY SYNC SQL'}
+                       </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <article className="pb-16 animate-fade-in max-w-5xl mx-auto">
-              <div className="bg-gray-50 dark:bg-gray-800 py-12 text-center px-4">
-                <span className="text-blue-600 font-bold tracking-widest uppercase text-sm mb-4 block">{currentPost.category || 'Uncategorized'}</span>
-                <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-6">{currentPost.title || 'Untitled Post'}</h1>
-                <div className="flex items-center justify-center gap-4 text-gray-500 text-sm">
-                  <span className="flex items-center gap-1 font-medium text-gray-800 dark:text-gray-200">{currentPost.author}</span>
-                  <span>•</span>
-                  <span>{currentPost.date}</span>
-                </div>
-              </div>
+          )}
 
-              {currentPost.imageUrl && (
-                <div className="px-4 -mt-6 mb-12">
-                  <img src={currentPost.imageUrl} alt="Header" className="w-full h-auto max-h-[500px] object-cover rounded-xl shadow-xl mx-auto" />
-                </div>
-              )}
-
-              <div className="px-4 max-w-3xl mx-auto">
-                <div 
-                  className="rich-text-editor prose prose-lg dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: currentPost.content || '<p className="text-gray-400 italic">No content yet...</p>' }}
-                />
-              </div>
-            </article>
-          </div>
-        )}
-
-        <form onSubmit={handleSave} className="grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-gray-400">Headline</label>
               <input
-                required
-                type="text"
-                className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-[var(--primary)] outline-none"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-lg"
                 value={currentPost.title || ''}
                 onChange={e => setCurrentPost({...currentPost, title: e.target.value})}
+                placeholder="The Future of Flow..."
               />
             </div>
-            
-            <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-               <RichTextEditor value={currentPost.content || ''} onChange={(html) => setCurrentPost({...currentPost, content: html})} />
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-gray-400">URL Identifier (Slug)</label>
+              <input
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-mono text-sm bg-gray-50"
+                value={currentPost.slug || ''}
+                onChange={e => setCurrentPost({...currentPost, slug: e.target.value})}
+                placeholder="auto-generated-slug"
+              />
             </div>
+          </div>
 
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-               <h3 className="font-bold mb-4">SEO Settings</h3>
-               <div className="space-y-4">
-                 <div>
-                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Title</label>
-                   <input
-                    type="text"
-                    className="w-full border rounded px-3 py-2 text-sm"
-                    value={currentPost.metaTitle || ''}
-                    onChange={e => setCurrentPost({...currentPost, metaTitle: e.target.value})}
-                   />
-                 </div>
-                 <div>
-                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Description</label>
-                   <textarea
-                    className="w-full border rounded px-3 py-2 text-sm h-20"
-                    value={currentPost.metaDescription || ''}
-                    onChange={e => setCurrentPost({...currentPost, metaDescription: e.target.value})}
-                   />
-                 </div>
-                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">SEO Score:</span>
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                       <div className={`h-full ${getSeoScore() > 80 ? 'bg-green-500' : 'bg-yellow-500'}`} style={{ width: `${getSeoScore()}%` }}></div>
-                    </div>
-                    <span className="text-xs font-bold">{getSeoScore()}/100</span>
-                 </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-gray-400">Article Body</label>
+            <RichTextEditor 
+              key={currentPost.id || 'new'}
+              value={currentPost.content || ''} 
+              onChange={html => setCurrentPost({...currentPost, content: html})} 
+            />
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</label>
+              <select 
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white"
+                value={currentPost.category}
+                onChange={e => setCurrentPost({...currentPost, category: e.target.value})}
+              >
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+               <label className="text-xs font-black uppercase tracking-widest text-gray-400">Hero Image URL</label>
+               <div className="flex gap-2">
+                  <input
+                    className="flex-grow border border-gray-300 rounded-xl px-4 py-3 text-sm"
+                    value={currentPost.cover_image || ''}
+                    onChange={e => setCurrentPost({...currentPost, cover_image: e.target.value})}
+                    placeholder="https://images.unsplash.com/..."
+                  />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-gray-100 hover:bg-gray-200 px-4 rounded-xl transition-colors"
+                  >
+                    {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
+                  </button>
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                </div>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image</label>
-              <input
-                type="text"
-                placeholder="Paste image URL..."
-                className="w-full border rounded px-3 py-2 text-sm mb-3 focus:ring-2 focus:ring-[var(--primary)] outline-none bg-white"
-                value={currentPost.imageUrl || ''}
-                onChange={e => setCurrentPost({...currentPost, imageUrl: e.target.value})}
-              />
-              <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors mb-4 text-center">
-                 <input
-                    type="file"
-                    id="post-image-upload"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                 />
-                 <label htmlFor="post-image-upload" className="cursor-pointer flex flex-col items-center gap-2">
-                    <div className="p-2 bg-blue-50 text-blue-500 rounded-full">
-                      <Upload size={20} />
-                    </div>
-                    <span className="text-sm text-gray-600 font-medium">Click to upload image</span>
-                    <span className="text-xs text-gray-400">SVG, PNG, JPG or GIF</span>
-                 </label>
-              </div>
-              {currentPost.imageUrl && (
-                <div className="relative rounded-lg overflow-hidden border border-gray-200 group">
-                  <img src={currentPost.imageUrl} alt="Preview" className="w-full h-48 object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button 
-                      type="button"
-                      onClick={() => setCurrentPost({...currentPost, imageUrl: ''})}
-                      className="bg-white text-red-600 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 hover:bg-red-50 shadow-lg"
-                    >
-                      <Trash2 size={14} /> Remove
-                    </button>
-                  </div>
-                </div>
-              )}
+          <div className="flex justify-between items-center p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
+                <input 
+                  type="checkbox"
+                  checked={currentPost.is_featured || false}
+                  onChange={e => setCurrentPost({...currentPost, is_featured: e.target.checked})}
+                  className="w-5 h-5 accent-blue-600 rounded-lg"
+                />
+                Feature in Hero
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
+                <input 
+                  type="checkbox"
+                  checked={currentPost.published || false}
+                  onChange={e => setCurrentPost({...currentPost, published: e.target.checked})}
+                  className="w-5 h-5 accent-green-600 rounded-lg"
+                />
+                Published
+              </label>
             </div>
-
-            <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-               <select
-                 className="w-full border rounded px-3 py-2"
-                 value={currentPost.category || ''}
-                 onChange={e => setCurrentPost({...currentPost, category: e.target.value})}
-                 required
-               >
-                 <option value="">Select Category</option>
-                 {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-               </select>
+            <div className="flex gap-3">
+              <button onClick={() => handleSave(false)} disabled={isSaving} className="bg-white text-gray-700 border border-gray-200 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all">Save as Draft</button>
+              <button onClick={() => handleSave(true)} disabled={isSaving} className="bg-blue-600 text-white px-10 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2">
+                {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                Publish Live
+              </button>
             </div>
-
-            <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
-               <input
-                type="text"
-                className="w-full border rounded px-3 py-2"
-                value={currentPost.author || ''}
-                onChange={e => setCurrentPost({...currentPost, author: e.target.value})}
-               />
-            </div>
-
-            <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt</label>
-               <textarea
-                className="w-full border rounded px-3 py-2 h-24"
-                value={currentPost.excerpt || ''}
-                onChange={e => setCurrentPost({...currentPost, excerpt: e.target.value})}
-               />
-            </div>
-
-            <div className="flex items-center gap-2">
-               <input
-                 type="checkbox"
-                 id="featured"
-                 checked={currentPost.featured || false}
-                 onChange={e => setCurrentPost({...currentPost, featured: e.target.checked})}
-                 className="rounded text-[var(--primary)] focus:ring-[var(--primary)]"
-               />
-               <label htmlFor="featured" className="text-sm font-medium">Mark as Featured</label>
-            </div>
-
-            <button type="submit" className="w-full bg-blue-900 text-white font-bold py-4 rounded-lg hover:bg-blue-800 shadow-lg shadow-blue-900/20 transition-all transform active:scale-[0.98]">
-              Publish Post
-            </button>
           </div>
-        </form>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-       <div className="flex justify-between items-center mb-8">
-         <h1 className="text-2xl font-bold">Manage Posts</h1>
-         <button onClick={handleCreate} className="bg-blue-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-800 transition-all shadow-md active:scale-95">
-           <Plus size={18} /> New Post
-         </button>
-       </div>
+    <div className="animate-fade-in space-y-6">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Stories</h1>
+          <p className="text-gray-500">Draft and publish your best work.</p>
+        </div>
+        <button onClick={handleCreate} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95">
+          <Plus size={24} /> New Story
+        </button>
+      </div>
 
-       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-         <table className="w-full text-left">
-           <thead className="bg-gray-50 border-b border-gray-100">
-             <tr>
-               <th className="p-4 font-medium text-gray-500 text-sm">Title</th>
-               <th className="p-4 font-medium text-gray-500 text-sm">Category</th>
-               <th className="p-4 font-medium text-gray-500 text-sm">Date</th>
-               <th className="p-4 font-medium text-gray-500 text-sm">Views</th>
-               <th className="p-4 font-medium text-gray-500 text-sm text-right">Actions</th>
-             </tr>
-           </thead>
-           <tbody>
-             {posts.map(post => (
-               <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50">
-                 <td className="p-4 font-medium">
-                   <div className="flex items-center gap-2">
-                     {post.title} 
-                     {post.featured && <span className="bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Featured</span>}
-                   </div>
-                 </td>
-                 <td className="p-4 text-sm text-gray-600">{post.category}</td>
-                 <td className="p-4 text-sm text-gray-600">{post.date}</td>
-                 <td className="p-4 text-sm text-gray-600">{post.views}</td>
-                 <td className="p-4 text-right">
-                   <div className="flex justify-end gap-2">
-                     <button 
-                       onClick={() => navigate(`/post/${post.category.toLowerCase()}/${post.slug}`)}
-                       className="p-2 text-gray-400 hover:text-[var(--primary)] transition-colors"
-                       title="View Live"
-                     >
-                       <ExternalLink size={18} />
-                     </button>
-                     <button onClick={() => handleEdit(post)} className="p-2 text-blue-500 hover:text-blue-700 transition-colors" title="Edit">
-                       <Edit size={18} />
-                     </button>
-                     <button onClick={() => handleDelete(post.id)} className="p-2 text-red-500 hover:text-red-700 transition-colors" title="Delete">
-                       <Trash2 size={18} />
-                     </button>
-                   </div>
-                 </td>
-               </tr>
-             ))}
-           </tbody>
-         </table>
-       </div>
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50/50 border-b">
+            <tr>
+              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Story Title</th>
+              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
+              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Options</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {posts.map(post => (
+              <tr key={post.id} className="hover:bg-blue-50/20 transition-colors group">
+                <td className="p-6">
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-gray-800 text-lg leading-tight">{post.title}</span>
+                    {post.is_featured && <Star size={16} fill="#eab308" className="text-yellow-500" />}
+                  </div>
+                  <div className="text-[11px] text-gray-400 font-mono mt-1 opacity-0 group-hover:opacity-100 transition-opacity">/{post.slug}</div>
+                </td>
+                <td className="p-6 text-center">
+                   <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${post.published ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                    {post.published ? 'Published' : 'Draft'}
+                  </span>
+                </td>
+                <td className="p-6 text-right">
+                  <div className="flex justify-end gap-3">
+                    <button onClick={() => handleEdit(post)} className="p-3 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit size={20} /></button>
+                    <button onClick={() => deletePost(post.id)} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {posts.length === 0 && (
+          <div className="p-20 text-center bg-gray-50/30">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400"><FileText size={32} /></div>
+            <h3 className="font-bold text-gray-800">No stories found</h3>
+            <p className="text-gray-500 text-sm mt-1">Start building your publication today.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
