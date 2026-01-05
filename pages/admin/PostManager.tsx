@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { BlogPost } from '../../types';
@@ -6,7 +5,7 @@ import { RichTextEditor } from '../../components/RichTextEditor';
 import { uploadFile } from '../../services/supabase';
 import { 
   Trash2, Edit, Plus, X, Save, Eye, Globe, Lock, 
-  Image as ImageIcon, Settings, FileText, Upload, Loader2, Send, Star, AlertCircle, ShieldAlert, Sparkles, RefreshCcw, Copy
+  Image as ImageIcon, Settings, FileText, Upload, Loader2, Send, Star, AlertCircle, ShieldAlert, Sparkles, RefreshCcw, Copy, TrendingUp, ChevronRight
 } from 'lucide-react';
 
 export const PostManager: React.FC = () => {
@@ -14,70 +13,10 @@ export const PostManager: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentPost, setCurrentPost] = useState<Partial<BlogPost>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<{ hero: boolean }>({ hero: false });
   const [saveError, setSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const ultimateFixSql = `-- ULTIMATE DATABASE REPAIR & SYNC
-
--- 1. Create Settings Table if not exists
-CREATE TABLE IF NOT EXISTS public.settings (
-    id TEXT PRIMARY KEY DEFAULT 'main',
-    site_name TEXT DEFAULT 'Future Flow Hub',
-    tagline TEXT DEFAULT 'Your Daily Dose of Tech',
-    description TEXT,
-    logo_url TEXT,
-    favicon_url TEXT,
-    primary_color TEXT DEFAULT '#3b82f6',
-    font_family TEXT DEFAULT 'Inter',
-    layout_mode TEXT DEFAULT 'wide',
-    theme_mode TEXT DEFAULT 'light',
-    total_visits INTEGER DEFAULT 0,
-    social_links JSONB DEFAULT '{}'::jsonb,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- 2. Ensure all Post columns exist
-ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS author TEXT DEFAULT 'Admin';
-ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
-ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
-ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
-ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS excerpt TEXT DEFAULT '';
-
--- 3. Create RPC Function for Views
-CREATE OR REPLACE FUNCTION increment_post_views(post_id UUID)
-RETURNS void AS $$
-BEGIN
-  UPDATE posts
-  SET views = COALESCE(views, 0) + 1
-  WHERE id = post_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- 4. RESET POLICIES
-ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Allow Public Read" ON public.posts;
-CREATE POLICY "Allow Public Read" ON public.posts FOR SELECT TO public USING (published = true);
-DROP POLICY IF EXISTS "Allow Admin All" ON public.posts;
-CREATE POLICY "Allow Admin All" ON public.posts FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow Public Read Settings" ON public.settings;
-CREATE POLICY "Allow Public Read Settings" ON public.settings FOR SELECT TO public USING (true);
-DROP POLICY IF EXISTS "Allow Admin All Settings" ON public.settings;
-CREATE POLICY "Allow Admin All Settings" ON public.settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
--- 5. FORCE SCHEMA CACHE RELOAD
-NOTIFY pgrst, 'reload schema';`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(ultimateFixSql);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleEdit = (post: BlogPost) => {
     setCurrentPost(post);
@@ -109,15 +48,14 @@ NOTIFY pgrst, 'reload schema';`;
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setIsUploading(true);
-    setUploadError(null);
+    setIsUploading({ hero: true });
     try {
       const url = await uploadFile(file, 'blog-assets');
       setCurrentPost(prev => ({ ...prev, cover_image: url }));
     } catch (err: any) {
-      setUploadError(err.message || "Upload failed.");
+      alert(err.message || "Upload failed.");
     } finally {
-      setIsUploading(false);
+      setIsUploading({ hero: false });
     }
   };
 
@@ -130,7 +68,7 @@ NOTIFY pgrst, 'reload schema';`;
 
     setIsSaving(true);
     try {
-      const slug = currentPost.slug || generateSlug(currentPost.title);
+      const slug = currentPost.slug || generateSlug(currentPost.title!);
       const postData = {
         ...currentPost,
         slug,
@@ -151,6 +89,16 @@ NOTIFY pgrst, 'reload schema';`;
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Permanently delete this story?")) {
+      try {
+        await deletePost(id);
+      } catch (err: any) {
+        alert(err.message);
+      }
+    }
+  };
+
   if (isEditing) {
     return (
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in max-w-5xl mx-auto mb-20">
@@ -164,144 +112,157 @@ NOTIFY pgrst, 'reload schema';`;
 
         <div className="p-8 space-y-8">
           {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-6 animate-fade-in">
-              <div className="flex items-start gap-4">
-                <ShieldAlert className="text-red-600 shrink-0 mt-1" size={24} />
-                <div className="flex-grow">
-                  <h3 className="font-bold text-red-900 mb-1">Database Sync Error</h3>
-                  <p className="text-sm text-red-800 mb-4">{saveError}</p>
-                  <div className="bg-white/60 rounded-xl p-5 border border-red-100">
-                    <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-2"><Sparkles size={14} className="text-blue-600" /> How to Fix: Run the script below in your Supabase SQL Editor</p>
-                    <div className="relative group">
-                       <pre className="bg-gray-900 text-blue-100 p-4 rounded-lg text-[10px] font-mono overflow-x-auto whitespace-pre">{ultimateFixSql}</pre>
-                       <button onClick={handleCopy} className="absolute top-2 right-2 bg-blue-600 text-white px-3 py-1.5 rounded-md text-[10px] font-black shadow-lg flex items-center gap-1.5">
-                        {copied ? <RefreshCcw size={12} className="animate-spin" /> : <Copy size={12} />}
-                        {copied ? 'COPIED!' : 'COPY SYNC SQL'}
-                       </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-700 text-sm">
+              <ShieldAlert size={20} />
+              {saveError}
             </div>
           )}
 
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-gray-400">Headline</label>
-              <input className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-lg" value={currentPost.title || ''} onChange={e => setCurrentPost({...currentPost, title: e.target.value})} placeholder="The Future of Flow..." />
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Headline</label>
+              <input className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-lg" value={currentPost.title || ''} onChange={e => setCurrentPost({...currentPost, title: e.target.value})} placeholder="The Future of Flow..." />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-gray-400">URL Identifier (Slug)</label>
-              <input className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-mono text-sm bg-gray-50" value={currentPost.slug || ''} onChange={e => setCurrentPost({...currentPost, slug: e.target.value})} placeholder="auto-generated-slug" />
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">URL Slug</label>
+              <input className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600 font-mono text-sm bg-gray-50" value={currentPost.slug || ''} onChange={e => setCurrentPost({...currentPost, slug: e.target.value})} placeholder="auto-generated-slug" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-gray-400">Article Body</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Hero Image</label>
+            <div className="flex items-center gap-4">
+              <div className="w-32 h-20 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                {currentPost.cover_image ? <img src={currentPost.cover_image} className="w-full h-full object-cover" /> : <ImageIcon className="text-gray-300" />}
+              </div>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+              >
+                {isUploading.hero ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                Upload New
+              </button>
+              <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Article Content</label>
             <RichTextEditor key={currentPost.id || 'new'} value={currentPost.content || ''} onChange={html => setCurrentPost({...currentPost, content: html})} />
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</label>
-              <select className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white" value={currentPost.category} onChange={e => setCurrentPost({...currentPost, category: e.target.value})}>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Category</label>
+              <select className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-white font-bold" value={currentPost.category} onChange={e => setCurrentPost({...currentPost, category: e.target.value})}>
                 {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
-            <div className="space-y-2 md:col-span-2">
-               <label className="text-xs font-black uppercase tracking-widest text-gray-400">Hero Image URL</label>
-               <div className="flex gap-2">
-                  <input className="flex-grow border border-gray-300 rounded-xl px-4 py-3 text-sm" value={currentPost.cover_image || ''} onChange={e => setCurrentPost({...currentPost, cover_image: e.target.value})} placeholder="https://images.unsplash.com/..." />
-                  <button onClick={() => fileInputRef.current?.click()} className="bg-gray-100 hover:bg-gray-200 px-4 rounded-xl transition-colors">{isUploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}</button>
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-               </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Author</label>
+              <input className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none" value={currentPost.author || ''} onChange={e => setCurrentPost({...currentPost, author: e.target.value})} />
+            </div>
+            <div className="flex items-center gap-4 pt-6">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-sm">
+                <input type="checkbox" checked={currentPost.is_featured} onChange={e => setCurrentPost({...currentPost, is_featured: e.target.checked})} className="w-4 h-4 rounded text-blue-600" />
+                Featured Story
+              </label>
             </div>
           </div>
+        </div>
 
-          <div className="flex justify-between items-center p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
-                <input type="checkbox" checked={currentPost.is_featured || false} onChange={e => setCurrentPost({...currentPost, is_featured: e.target.checked})} className="w-5 h-5 accent-blue-600 rounded-lg" />
-                Feature in Hero
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
-                <input type="checkbox" checked={currentPost.published || false} onChange={e => setCurrentPost({...currentPost, published: e.target.checked})} className="w-5 h-5 accent-green-600 rounded-lg" />
-                Published
-              </label>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => handleSave(false)} disabled={isSaving} className="bg-white text-gray-700 border border-gray-200 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all">Save as Draft</button>
-              <button onClick={() => handleSave(true)} disabled={isSaving} className="bg-blue-600 text-white px-10 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2">
-                {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-                Publish Live
-              </button>
-            </div>
-          </div>
+        <div className="bg-gray-50 px-8 py-6 flex justify-end gap-4 border-t border-gray-100">
+           <button onClick={() => handleSave(false)} className="px-6 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-all">Save as Draft</button>
+           <button onClick={() => handleSave(true)} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2">
+             {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+             Publish Live
+           </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex justify-between items-end">
+    <div className="space-y-8 animate-fade-in pb-20">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Stories</h1>
-          <p className="text-gray-500">Draft and publish your best work.</p>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Story Manager</h1>
+          <p className="text-gray-500 font-medium">Create, edit, and track the performance of your articles.</p>
         </div>
-        <button onClick={handleCreate} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95">
-          <Plus size={24} /> New Story
+        <button onClick={handleCreate} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95">
+          <Plus size={20} /> Compose New
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50/50 border-b">
-            <tr>
-              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Story Title</th>
-              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Engagement</th>
-              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
-              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Options</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {posts.map(post => (
-              <tr key={post.id} className="hover:bg-blue-50/20 transition-colors group">
-                <td className="p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-gray-800 text-lg leading-tight">{post.title}</span>
-                    {post.is_featured && <Star size={16} fill="#eab308" className="text-yellow-500" />}
-                  </div>
-                  <div className="text-[11px] text-gray-400 font-mono mt-1 opacity-0 group-hover:opacity-100 transition-opacity">/{post.slug}</div>
-                </td>
-                <td className="p-6 text-center">
-                  <div className="flex items-center justify-center gap-1.5 text-blue-600 font-bold">
-                    <Eye size={16} />
-                    <span>{(post.views || 0).toLocaleString()}</span>
-                  </div>
-                </td>
-                <td className="p-6 text-center">
-                   <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${post.published ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                    {post.published ? 'Published' : 'Draft'}
-                  </span>
-                </td>
-                <td className="p-6 text-right">
-                  <div className="flex justify-end gap-3">
-                    <button onClick={() => handleEdit(post)} className="p-3 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit size={20} /></button>
-                    <button onClick={() => deletePost(post.id)} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20} /></button>
-                  </div>
-                </td>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Article Details</th>
+                <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
+                <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Popularity</th>
+                <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {posts.length === 0 && (
-          <div className="p-20 text-center bg-gray-50/30">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400"><FileText size={32} /></div>
-            <h3 className="font-bold text-gray-800">No stories found</h3>
-            <p className="text-gray-500 text-sm mt-1">Start building your publication today.</p>
-          </div>
-        )}
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {posts.map(post => (
+                <tr key={post.id} className="hover:bg-gray-50/30 transition-colors group">
+                  <td className="p-4">
+                    <div className="flex items-center gap-4">
+                       <div className="w-16 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-100 shadow-sm">
+                          {post.cover_image && <img src={post.cover_image} className="w-full h-full object-cover" />}
+                       </div>
+                       <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 line-clamp-1 group-hover:text-blue-600 transition-colors">{post.title}</span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{post.author} • {new Date(post.created_at!).toLocaleDateString()}</span>
+                       </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                     <span className="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-tighter">{post.category}</span>
+                  </td>
+                  <td className="p-4">
+                     <div className="flex flex-col gap-1 w-32">
+                        <div className="flex justify-between items-center text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                           <span className="flex items-center gap-1"><Eye size={10} /> {post.views || 0}</span>
+                           {(post.views || 0) > 500 && <TrendingUp size={10} className="text-orange-500" />}
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                           <div className="h-full bg-blue-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min((post.views || 0) / 10, 100)}%` }}></div>
+                        </div>
+                     </div>
+                  </td>
+                  <td className="p-4 text-sm font-medium">
+                    {post.published ? (
+                      <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
+                        <Globe size={12} /> Live
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-gray-400 bg-gray-50 px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-200">
+                        <Lock size={12} /> Draft
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleEdit(post)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit size={18} /></button>
+                      <button onClick={() => handleDelete(post.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {posts.length === 0 && (
+            <div className="p-20 text-center text-gray-400">
+               <FileText size={64} className="mx-auto mb-4 opacity-10" />
+               <p className="font-bold text-xl mb-1">No articles found.</p>
+               <p className="text-sm">Start your blogging journey by clicking "Compose New".</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
