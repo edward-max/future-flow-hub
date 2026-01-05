@@ -6,7 +6,7 @@ import { RichTextEditor } from '../../components/RichTextEditor';
 import { uploadFile } from '../../services/supabase';
 import { 
   Trash2, Edit, Plus, X, Save, Eye, Globe, Lock, 
-  Image as ImageIcon, Settings, FileText, Upload, Loader2, Send, Star, AlertCircle, ShieldAlert, Sparkles, RefreshCcw, Copy
+  ImageIcon, Settings, FileText, Upload, Loader2, Send, Star, AlertCircle, ShieldAlert, Sparkles, RefreshCcw, Copy
 } from 'lucide-react';
 
 export const PostManager: React.FC = () => {
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
     font_family TEXT DEFAULT 'Inter',
     layout_mode TEXT DEFAULT 'wide',
     theme_mode TEXT DEFAULT 'light',
+    total_visits INTEGER DEFAULT 0,
     social_links JSONB DEFAULT '{}'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -75,6 +76,7 @@ NOTIFY pgrst, 'reload schema';`;
   };
 
   const handleCreate = () => {
+    // Fix: Remove call to undefined setCurrentCat
     setCurrentPost({
       title: '',
       slug: '',

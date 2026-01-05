@@ -26,6 +26,8 @@ interface AppContextType {
   updateCategory: (category: Category) => Promise<{ success: boolean; error?: any; fallback?: boolean }>;
   deleteCategory: (id: string) => Promise<{ success: boolean; error?: any; fallback?: boolean }>;
   updateSettings: (settings: SiteSettings) => Promise<void>;
+  incrementPostViews: (postId: string) => Promise<void>;
+  incrementSiteVisits: () => Promise<void>;
   addSubscriber: (email: string) => Promise<{ success: boolean; message: string }>;
   removeSubscriber: (id: string) => Promise<void>;
 }
@@ -101,11 +103,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setDbStatus(prev => ({ ...prev, settings: true }));
         saveToStorage('ffh_settings_local', settingsData);
       } else {
-        // If it's a schema cache error or table missing error
         if (settingsError?.code === 'PGRST204' || settingsError?.code === 'PGRST205' || settingsError?.message?.includes('cache')) {
           setDbStatus(prev => ({ ...prev, settings: false }));
         } else if (!settingsError && !settingsData) {
-          // Table exists but record doesn't
           setDbStatus(prev => ({ ...prev, settings: true }));
         } else {
           setDbStatus(prev => ({ ...prev, settings: false }));
@@ -152,8 +152,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(null);
   };
 
+  const incrementPostViews = async (postId: string) => {
+    try {
+      await supabase.rpc('increment_post_views', { post_id: postId });
+      // Fallback if RPC is not available
+      const post = posts.find(p => p.id === postId);
+      if (post) {
+        await supabase.from('posts').update({ views: (post.views || 0) + 1 }).eq('id', postId);
+      }
+    } catch (err) {
+      console.error("View count error", err);
+    }
+  };
+
+  const incrementSiteVisits = async () => {
+    try {
+      const currentVisits = settings.total_visits || 0;
+      await supabase.from('settings').update({ total_visits: currentVisits + 1 }).eq('id', 'main');
+    } catch (err) {
+      console.error("Site visit error", err);
+    }
+  };
+
   const updateSettings = async (newSettings: SiteSettings) => {
-    // Optimistic Update
     setSettings(newSettings);
     saveToStorage('ffh_settings_local', newSettings);
     setIsSavingSettings(true);
@@ -171,24 +192,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         layout_mode: newSettings.layout_mode,
         theme_mode: newSettings.theme_mode,
         social_links: newSettings.social_links,
+        total_visits: newSettings.total_visits,
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('settings')
-        .upsert(dbPayload);
-      
-      if (error) {
-        console.error("Supabase Settings Update Error Detail:", JSON.stringify(error, null, 2));
-        // Check for common schema errors
-        if (error.code === 'PGRST205' || error.code === 'PGRST204') {
-          setDbStatus(prev => ({ ...prev, settings: false }));
-        }
-      } else {
+      const { error } = await supabase.from('settings').upsert(dbPayload);
+      if (error && (error.code === 'PGRST205' || error.code === 'PGRST204')) {
+        setDbStatus(prev => ({ ...prev, settings: false }));
+      } else if (!error) {
         setDbStatus(prev => ({ ...prev, settings: true }));
       }
     } catch (err: any) {
-      console.error("Settings Sync Network/Unexpected Error:", err?.message || err);
       setDbStatus(prev => ({ ...prev, settings: false }));
     } finally {
       setIsSavingSettings(false);
@@ -208,7 +222,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       is_featured: post.is_featured || false,
       views: post.views || 0
     };
-
     const { error } = await supabase.from('posts').insert([payload]);
     if (error) throw new Error(error.message || JSON.stringify(error));
     await fetchData();
@@ -264,7 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       refreshData: fetchData,
       login, logout, addPost, updatePost, deletePost,
       addCategory, updateCategory, deleteCategory,
-      updateSettings, addSubscriber, removeSubscriber
+      updateSettings, incrementPostViews, incrementSiteVisits, addSubscriber, removeSubscriber
     }}>
       {children}
     </AppContext.Provider>

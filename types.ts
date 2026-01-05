@@ -1,5 +1,4 @@
 
-
 export interface Category {
   id: string;
   name: string;
@@ -38,6 +37,7 @@ export interface SiteSettings {
   font_family: 'Inter' | 'Merriweather' | 'Space Grotesk';
   layout_mode: 'wide' | 'boxed';
   theme_mode: 'light' | 'dark';
+  total_visits?: number;
   social_links: {
     facebook?: string;
     twitter?: string;
