@@ -1,22 +1,24 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Calendar, User, ArrowLeft, Share2, Eye } from 'lucide-react';
+import { Calendar, User, ArrowLeft, Share2, Eye, TrendingUp } from 'lucide-react';
 
 export const PostDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { posts, settings, isLoading, incrementPostViews } = useApp();
+  const hasIncremented = useRef<string | null>(null);
   
   const post = posts.find(p => p.slug === slug);
 
   useEffect(() => {
-    if (post) {
+    if (post && hasIncremented.current !== post.id) {
       document.title = `${post.title} | ${settings.site_name}`;
-      // Track post view
+      // Track post view exactly once per unique post ID in this session/mount
       incrementPostViews(post.id);
+      hasIncremented.current = post.id;
     }
-  }, [post, settings]);
+  }, [post?.id, slug, settings.site_name, incrementPostViews]);
 
   if (isLoading) return (
     <div className="p-20 text-center flex flex-col items-center justify-center min-h-[60vh]">
@@ -26,6 +28,8 @@ export const PostDetail: React.FC = () => {
   );
 
   if (!post) return <Navigate to="/" />;
+
+  const isTrending = (post.views || 0) > 100;
 
   return (
     <article className="pb-20 animate-fade-in bg-white dark:bg-gray-900 transition-colors">
@@ -37,16 +41,23 @@ export const PostDetail: React.FC = () => {
           <h1 className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white mb-8 leading-tight tracking-tight">
             {post.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-8 text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest">
+          <div className="flex flex-wrap items-center gap-6 text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest">
             <span className="flex items-center gap-2">
               <Calendar size={18} className="text-blue-600" /> {post.created_at ? new Date(post.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : 'Recent'}
             </span>
             <span className="flex items-center gap-2">
               <User size={18} className="text-blue-600" /> {post.author || 'Editorial Team'}
             </span>
-            <span className="flex items-center gap-2">
-              <Eye size={18} className="text-blue-600" /> {post.views || 0} readers
-            </span>
+            <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <span className="flex items-center gap-2 text-blue-600">
+                <Eye size={18} /> <span className="text-gray-900 dark:text-white">{(post.views || 0).toLocaleString()}</span>
+              </span>
+              {isTrending && (
+                <span className="flex items-center gap-1 text-[10px] text-orange-500 animate-pulse">
+                  <TrendingUp size={12} /> TRENDING
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -79,12 +90,6 @@ export const PostDetail: React.FC = () => {
                 <Share2 size={18} /> Share Story
              </button>
           </div>
-        </div>
-        
-        <div className="mt-12 text-center">
-           <Link to="/" className="text-gray-400 hover:text-blue-600 font-black uppercase tracking-widest text-xs transition-colors">
-              Click here to return to the home page
-           </Link>
         </div>
       </div>
     </article>

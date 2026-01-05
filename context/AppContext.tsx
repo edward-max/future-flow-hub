@@ -153,24 +153,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const incrementPostViews = async (postId: string) => {
+    // 1. Update local state immediately for UI snappiness
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, views: (p.views || 0) + 1 } : p));
+
     try {
-      await supabase.rpc('increment_post_views', { post_id: postId });
-      // Fallback if RPC is not available
-      const post = posts.find(p => p.id === postId);
-      if (post) {
-        await supabase.from('posts').update({ views: (post.views || 0) + 1 }).eq('id', postId);
+      // 2. Call Supabase RPC
+      const { error } = await supabase.rpc('increment_post_views', { post_id: postId });
+      
+      // 3. Fallback to direct update if RPC fails
+      if (error) {
+        const post = posts.find(p => p.id === postId);
+        if (post) {
+          await supabase.from('posts').update({ views: (post.views || 0) + 1 }).eq('id', postId);
+        }
       }
     } catch (err) {
-      console.error("View count error", err);
+      console.error("View count increment failed", err);
     }
   };
 
   const incrementSiteVisits = async () => {
+    // Update local state immediately
+    setSettings(prev => ({ ...prev, total_visits: (prev.total_visits || 0) + 1 }));
+
     try {
-      const currentVisits = settings.total_visits || 0;
-      await supabase.from('settings').update({ total_visits: currentVisits + 1 }).eq('id', 'main');
+      const { data: current } = await supabase.from('settings').select('total_visits').eq('id', 'main').maybeSingle();
+      const nextVal = (current?.total_visits || 0) + 1;
+      await supabase.from('settings').update({ total_visits: nextVal }).eq('id', 'main');
     } catch (err) {
-      console.error("Site visit error", err);
+      console.error("Site visit increment failed", err);
     }
   };
 

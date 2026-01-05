@@ -6,7 +6,7 @@ import { RichTextEditor } from '../../components/RichTextEditor';
 import { uploadFile } from '../../services/supabase';
 import { 
   Trash2, Edit, Plus, X, Save, Eye, Globe, Lock, 
-  ImageIcon, Settings, FileText, Upload, Loader2, Send, Star, AlertCircle, ShieldAlert, Sparkles, RefreshCcw, Copy
+  Image as ImageIcon, Settings, FileText, Upload, Loader2, Send, Star, AlertCircle, ShieldAlert, Sparkles, RefreshCcw, Copy
 } from 'lucide-react';
 
 export const PostManager: React.FC = () => {
@@ -46,7 +46,17 @@ ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS views INTEGER DEFAUL
 ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
 ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS excerpt TEXT DEFAULT '';
 
--- 3. RESET POLICIES
+-- 3. Create RPC Function for Views
+CREATE OR REPLACE FUNCTION increment_post_views(post_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE posts
+  SET views = COALESCE(views, 0) + 1
+  WHERE id = post_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 4. RESET POLICIES
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
@@ -60,7 +70,7 @@ CREATE POLICY "Allow Public Read Settings" ON public.settings FOR SELECT TO publ
 DROP POLICY IF EXISTS "Allow Admin All Settings" ON public.settings;
 CREATE POLICY "Allow Admin All Settings" ON public.settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 4. FORCE SCHEMA CACHE RELOAD
+-- 5. FORCE SCHEMA CACHE RELOAD
 NOTIFY pgrst, 'reload schema';`;
 
   const handleCopy = () => {
@@ -76,7 +86,6 @@ NOTIFY pgrst, 'reload schema';`;
   };
 
   const handleCreate = () => {
-    // Fix: Remove call to undefined setCurrentCat
     setCurrentPost({
       title: '',
       slug: '',
@@ -250,6 +259,7 @@ NOTIFY pgrst, 'reload schema';`;
           <thead className="bg-gray-50/50 border-b">
             <tr>
               <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Story Title</th>
+              <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Engagement</th>
               <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
               <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Options</th>
             </tr>
@@ -263,6 +273,12 @@ NOTIFY pgrst, 'reload schema';`;
                     {post.is_featured && <Star size={16} fill="#eab308" className="text-yellow-500" />}
                   </div>
                   <div className="text-[11px] text-gray-400 font-mono mt-1 opacity-0 group-hover:opacity-100 transition-opacity">/{post.slug}</div>
+                </td>
+                <td className="p-6 text-center">
+                  <div className="flex items-center justify-center gap-1.5 text-blue-600 font-bold">
+                    <Eye size={16} />
+                    <span>{(post.views || 0).toLocaleString()}</span>
+                  </div>
                 </td>
                 <td className="p-6 text-center">
                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${post.published ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>

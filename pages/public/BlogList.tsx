@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, Eye } from 'lucide-react';
 
 export const BlogList: React.FC = () => {
   const { posts, categories, settings, isLoading } = useApp();
@@ -104,7 +104,10 @@ export const BlogList: React.FC = () => {
                   <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3 mb-4 flex-grow">{post.excerpt}</p>
                   <div className="pt-4 border-t border-gray-50 dark:border-gray-700 flex justify-between items-center">
                     <span className="text-xs font-medium text-gray-500">{post.author || 'Staff'}</span>
-                    <span className="text-xs text-gray-400">{post.views || 0} views</span>
+                    <span className="flex items-center gap-1 text-xs font-bold text-gray-500 dark:text-gray-400">
+                      <Eye size={14} className="text-[var(--primary)]" />
+                      {(post.views || 0).toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </article>
